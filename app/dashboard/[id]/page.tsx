@@ -1,0 +1,97 @@
+import { prisma } from "@/lib/db";
+import { getSessionArtistId } from "@/lib/auth";
+import { notFound, redirect } from "next/navigation";
+import ReviewActions from "./ReviewActions";
+
+export const dynamic = "force-dynamic";
+
+export default async function SubmissionDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const artistId = await getSessionArtistId();
+  if (!artistId) redirect("/login");
+
+  const submission = await prisma.submission.findUnique({
+    where: { id: params.id },
+    include: { client: true, artist: true },
+  });
+
+  // Not found, or belongs to a different artist — same 404 either way, so
+  // we don't reveal to a logged-in artist that a submission ID exists but
+  // isn't theirs.
+  if (!submission || submission.artistId !== artistId) return notFound();
+
+  return (
+    <main className="min-h-screen bg-ink text-paper">
+      <div className="mx-auto max-w-2xl px-6 py-10">
+        <a href="/dashboard" className="text-sm text-paper/50 hover:text-paper">
+          ← All submissions
+        </a>
+
+        <h1 className="mt-4 font-display text-3xl text-paper">
+          {submission.client.email}
+        </h1>
+        <p className="mt-1 text-sm text-paper/50">
+          Submitted {new Date(submission.createdAt).toLocaleString()}
+        </p>
+
+        {submission.inspirationImages[0] && (
+          <img
+            src={submission.inspirationImages[0]}
+            className="mt-6 aspect-square w-full rounded-sm object-cover"
+          />
+        )}
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <Field label="Placement" value={submission.placement} />
+          <Field label="Size" value={submission.sizePreset ?? `${submission.sizeInches ?? "—"} in`} />
+          <Field label="Reference freedom" value={`${submission.referenceFreedom}% artist's interpretation`} />
+          <Field label="Detected style" value={submission.aiDetectedStyle ?? "—"} />
+          <Field label="AI complexity" value={submission.aiComplexity ? `${submission.aiComplexity}/10` : "—"} />
+          <Field
+            label="AI confidence"
+            value={submission.aiConfidence ? `${Math.round(submission.aiConfidence * 100)}%` : "—"}
+          />
+        </div>
+
+        {submission.description && (
+          <div className="mt-6">
+            <p className="text-xs uppercase tracking-wide text-paper/40">Client notes</p>
+            <p className="mt-1 text-sm text-paper/80">{submission.description}</p>
+          </div>
+        )}
+
+        <div className="mt-6 rounded-sm border border-paper/10 bg-white/[0.02] p-5">
+          <p className="text-xs uppercase tracking-wide text-paper/40">AI estimate</p>
+          <p className="mt-1 text-2xl text-paper">
+            ${submission.estimatedPriceLow?.toFixed(0)}–${submission.estimatedPriceHigh?.toFixed(0)}
+          </p>
+          <p className="mt-1 text-sm text-paper/60">
+            {submission.estimatedHours?.toFixed(1)} hours
+          </p>
+        </div>
+
+        <ReviewActions
+          submissionId={submission.id}
+          currentStatus={submission.status}
+          suggestedLow={submission.estimatedPriceLow ?? 0}
+          suggestedHigh={submission.estimatedPriceHigh ?? 0}
+          artistOverridePriceLow={submission.artistOverridePriceLow}
+          artistOverridePriceHigh={submission.artistOverridePriceHigh}
+          artistNotes={submission.artistNotes}
+        />
+      </div>
+    </main>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-paper/40">{label}</p>
+      <p className="mt-0.5 text-sm text-paper">{value}</p>
+    </div>
+  );
+}

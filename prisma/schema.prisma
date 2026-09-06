@@ -1,0 +1,238 @@
+// Tattoo Booking Platform — Database Schema
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ARTIST
+// ---------------------------------------------------------------------------
+
+model Artist {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  passwordHash String
+  name        String
+  slug        String   @unique // public booking page: /a/[slug]
+  bio         String?
+  profilePhoto String?
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Pricing config (1:1)
+  pricingConfig PricingConfig?
+
+  // Booking automation rules (1:1)
+  bookingRules  BookingRules?
+
+  styles        TattooStyle[]
+  restrictions  ArtistRestriction[]
+  availability  AvailabilityBlock[]
+  submissions   Submission[]
+  appointments  Appointment[]
+}
+
+model PricingConfig {
+  id               String @id @default(cuid())
+  artist           Artist @relation(fields: [artistId], references: [id])
+  artistId         String @unique
+
+  hourlyRate       Float  // e.g. 250.00
+  minimumPrice     Float  // e.g. 150.00
+  rangeSpreadPct   Float  @default(0.15) // +/- 15% shown as a range to client
+
+  depositType      DepositType @default(FLAT)
+  depositFlat      Float?      // e.g. 150.00
+  depositPercent   Float?      // e.g. 0.20
+  cancellationPolicy String?
+
+  updatedAt        DateTime @updatedAt
+}
+
+enum DepositType {
+  FLAT
+  PERCENT
+}
+
+// Artist-configurable tattoo styles + time multipliers (PRD section 12)
+model TattooStyle {
+  id             String @id @default(cuid())
+  artist         Artist @relation(fields: [artistId], references: [id])
+  artistId       String
+
+  name           String        // e.g. "Fine Line"
+  timeMultiplier Float         // e.g. 0.9
+  active         Boolean @default(true)
+
+  @@unique([artistId, name])
+}
+
+// Things an artist explicitly won't do (PRD section 26)
+model ArtistRestriction {
+  id        String @id @default(cuid())
+  artist    Artist @relation(fields: [artistId], references: [id])
+  artistId  String
+
+  type      RestrictionType
+  value     String   // e.g. "hands", "portraits", "coverups"
+}
+
+enum RestrictionType {
+  PLACEMENT
+  STYLE
+  SUBJECT_MATTER
+  OTHER
+}
+
+// Automatic booking thresholds (PRD section 15)
+model BookingRules {
+  id                      String @id @default(cuid())
+  artist                  Artist @relation(fields: [artistId], references: [id])
+  artistId                String @unique
+
+  maxAutoBookDurationMins Int     @default(180) // above this -> review/consult
+  maxAutoBookComplexity   Int     @default(6)    // 1-10 scale
+  minAiConfidence         Float   @default(0.75) // 0-1
+  referenceFreedomMaxForAutoBook Int @default(40) // slider 0-100; above this -> more artist freedom needed -> review/consult
+  requireConsultAboveDurationMins Int @default(240) // hard cutoff -> RED
+  consultationDurationMins Int @default(30) // length of a booked consultation slot
+
+  updatedAt               DateTime @updatedAt
+}
+
+// Weekly recurring or one-off availability, split by type (PRD section 17-18)
+model AvailabilityBlock {
+  id         String   @id @default(cuid())
+  artist     Artist   @relation(fields: [artistId], references: [id])
+  artistId   String
+
+  type       AvailabilityType
+  dayOfWeek  Int?      // 0=Sun..6=Sat, for recurring
+  startTime  String    // "10:00" 24h local
+  endTime    String    // "18:00"
+  date       DateTime? // for one-off overrides / blocked days
+  isBlocked  Boolean   @default(false) // true = explicitly unavailable (vacation etc)
+}
+
+enum AvailabilityType {
+  TATTOO
+  CONSULTATION
+}
+
+// ---------------------------------------------------------------------------
+// CLIENT
+// ---------------------------------------------------------------------------
+
+model Client {
+  id          String   @id @default(cuid())
+  email       String
+  phone       String?
+  name        String?
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+  appointments Appointment[]
+
+  @@unique([email])
+}
+
+// ---------------------------------------------------------------------------
+// SUBMISSION (the intake -> estimate pipeline)
+// ---------------------------------------------------------------------------
+
+model Submission {
+  id                String   @id @default(cuid())
+  artist            Artist   @relation(fields: [artistId], references: [id])
+  artistId          String
+  client            Client   @relation(fields: [clientId], references: [id])
+  clientId          String
+
+  createdAt         DateTime @default(now())
+
+  // Client inputs
+  inspirationImages String[] // URLs
+  placementPhoto    String?
+  description       String?
+  placement         String   // e.g. "forearm"
+  sizeInches        Float?
+  sizePreset        String?  // "coin" | "palm" | "phone" | "hand" | "larger"
+  referenceFreedom  Int      // 0 (follow reference) - 100 (artist's interpretation)
+
+  // AI analysis output
+  aiDetectedStyle    String?
+  aiComplexity       Int?     // 1-10
+  aiEstimatedHours   Float?
+  aiConfidence       Float?   // 0-1
+  aiColorVsBW        String?  // "color" | "black_grey"
+  aiRawAnalysis      Json?
+
+  // Pricing engine output
+  estimatedPriceLow  Float?
+  estimatedPriceHigh Float?
+  estimatedHours     Float?
+
+  // Routing decision
+  status             SubmissionStatus @default(PENDING_ANALYSIS)
+
+  // Artist override
+  artistOverridePriceLow  Float?
+  artistOverridePriceHigh Float?
+  artistOverrideHours     Float?
+  artistNotes             String?
+
+  appointment        Appointment?
+}
+
+enum SubmissionStatus {
+  PENDING_ANALYSIS   // AI hasn't run yet
+  GREEN_AUTO_BOOKABLE
+  YELLOW_ARTIST_REVIEW
+  RED_CONSULTATION_REQUIRED
+  APPROVED            // artist approved after review
+  DECLINED
+  BOOKED
+}
+
+// ---------------------------------------------------------------------------
+// APPOINTMENT
+// ---------------------------------------------------------------------------
+
+model Appointment {
+  id            String   @id @default(cuid())
+  artist        Artist   @relation(fields: [artistId], references: [id])
+  artistId      String
+  client        Client   @relation(fields: [clientId], references: [id])
+  clientId      String
+  submission    Submission? @relation(fields: [submissionId], references: [id])
+  submissionId  String?     @unique
+
+  type          AppointmentType
+  startTime     DateTime
+  endTime       DateTime
+
+  depositPaid   Boolean  @default(false)
+  depositAmount Float?
+  stripePaymentIntentId String?
+
+  status        AppointmentStatus @default(SCHEDULED)
+  createdAt     DateTime @default(now())
+}
+
+enum AppointmentType {
+  TATTOO
+  CONSULTATION
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
