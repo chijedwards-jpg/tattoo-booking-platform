@@ -2,28 +2,7 @@
 
 import { useState } from "react";
 import { SlotBooker, BookedConfirmation, type Slot } from "./SlotBooker";
-
-type Placement =
-  | "forearm" | "upper_arm" | "bicep" | "shoulder" | "chest" | "back"
-  | "ribs" | "thigh" | "calf" | "shin" | "ankle" | "hand" | "foot" | "neck" | "other";
-
-const PLACEMENTS: { value: Placement; label: string }[] = [
-  { value: "forearm", label: "Forearm" },
-  { value: "upper_arm", label: "Upper arm" },
-  { value: "bicep", label: "Bicep" },
-  { value: "shoulder", label: "Shoulder" },
-  { value: "chest", label: "Chest" },
-  { value: "back", label: "Back" },
-  { value: "ribs", label: "Ribs" },
-  { value: "thigh", label: "Thigh" },
-  { value: "calf", label: "Calf" },
-  { value: "shin", label: "Shin" },
-  { value: "ankle", label: "Ankle" },
-  { value: "hand", label: "Hand" },
-  { value: "foot", label: "Foot" },
-  { value: "neck", label: "Neck" },
-  { value: "other", label: "Other" },
-];
+import { PLACEMENTS, type Placement } from "@/lib/placements";
 
 const SIZE_PRESETS = [
   { value: "coin", label: "Coin-sized", hint: "~1–2 in" },

@@ -45,7 +45,15 @@ export default async function DashboardPage() {
             <h1 className="font-display text-3xl text-paper">Submissions</h1>
             <p className="mt-1 text-sm text-paper/50">{artist.name}</p>
           </div>
-          <LogoutButton />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard/settings"
+              className="rounded-sm border border-paper/15 px-4 py-2 text-xs text-paper/60 hover:text-paper"
+            >
+              Settings
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-3 gap-3">

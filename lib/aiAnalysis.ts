@@ -1,6 +1,6 @@
 import type { AiAnalysisInput } from "./pricingEngine";
 
-const VALID_STYLES = [
+export const VALID_STYLES = [
   "Minimalist", "Fine Line", "Traditional", "Neo-traditional", "Black & Grey",
   "Color", "Realism", "Micro Realism", "Geometric", "Illustrative",
   "Japanese", "Lettering", "Linework", "Blackwork", "Other",
