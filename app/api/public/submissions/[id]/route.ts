@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { BOOKABLE_STATUSES } from "@/lib/bookingStatus";
+import { calculateDeposit } from "@/lib/pricingEngine";
 
 /**
  * Unauthenticated lookup used by the /book/[id] page — clients don't have
@@ -24,7 +25,10 @@ export async function GET(
       estimatedPriceHigh: true,
       artistOverridePriceLow: true,
       artistOverridePriceHigh: true,
-      appointment: { select: { startTime: true, type: true } },
+      artist: { select: { pricingConfig: true } },
+      appointment: {
+        select: { startTime: true, type: true, depositPaid: true, depositAmount: true },
+      },
     },
   });
 
@@ -32,17 +36,31 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const priceLow = submission.artistOverridePriceLow ?? submission.estimatedPriceLow;
+
   return NextResponse.json({
     id: submission.id,
     status: submission.status,
     placement: submission.placement,
     detectedStyle: submission.aiDetectedStyle,
     hours: submission.estimatedHours,
-    priceLow: submission.artistOverridePriceLow ?? submission.estimatedPriceLow,
+    priceLow,
     priceHigh: submission.artistOverridePriceHigh ?? submission.estimatedPriceHigh,
     bookable: BOOKABLE_STATUSES.includes(submission.status),
+    deposit:
+      priceLow != null && submission.artist.pricingConfig
+        ? {
+            amount: calculateDeposit(submission.artist.pricingConfig, priceLow),
+            instructions: submission.artist.pricingConfig.depositInstructions,
+          }
+        : null,
     appointment: submission.appointment
-      ? { startTime: submission.appointment.startTime.toISOString(), type: submission.appointment.type }
+      ? {
+          startTime: submission.appointment.startTime.toISOString(),
+          type: submission.appointment.type,
+          depositPaid: submission.appointment.depositPaid,
+          depositAmount: submission.appointment.depositAmount,
+        }
       : null,
   });
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
 import ReviewActions from "./ReviewActions";
+import DepositStatus from "./DepositStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function SubmissionDetailPage({
 
   const submission = await prisma.submission.findUnique({
     where: { id: params.id },
-    include: { client: true, artist: true },
+    include: { client: true, artist: true, appointment: true },
   });
 
   // Not found, or belongs to a different artist — same 404 either way, so
@@ -73,15 +74,25 @@ export default async function SubmissionDetailPage({
           </p>
         </div>
 
-        <ReviewActions
-          submissionId={submission.id}
-          currentStatus={submission.status}
-          suggestedLow={submission.estimatedPriceLow ?? 0}
-          suggestedHigh={submission.estimatedPriceHigh ?? 0}
-          artistOverridePriceLow={submission.artistOverridePriceLow}
-          artistOverridePriceHigh={submission.artistOverridePriceHigh}
-          artistNotes={submission.artistNotes}
-        />
+        {submission.status === "BOOKED" && submission.appointment ? (
+          <DepositStatus
+            appointmentId={submission.appointment.id}
+            type={submission.appointment.type}
+            startTime={submission.appointment.startTime.toISOString()}
+            depositPaid={submission.appointment.depositPaid}
+            depositAmount={submission.appointment.depositAmount}
+          />
+        ) : (
+          <ReviewActions
+            submissionId={submission.id}
+            currentStatus={submission.status}
+            suggestedLow={submission.estimatedPriceLow ?? 0}
+            suggestedHigh={submission.estimatedPriceHigh ?? 0}
+            artistOverridePriceLow={submission.artistOverridePriceLow}
+            artistOverridePriceHigh={submission.artistOverridePriceHigh}
+            artistNotes={submission.artistNotes}
+          />
+        )}
       </div>
     </main>
   );

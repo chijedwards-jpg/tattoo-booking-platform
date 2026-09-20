@@ -10,6 +10,7 @@ const PricingSchema = z.object({
   depositType: z.enum(["FLAT", "PERCENT"]),
   depositFlat: z.number().nonnegative().nullable(),
   depositPercent: z.number().min(0).max(1).nullable(),
+  depositInstructions: z.string().nullable(),
   cancellationPolicy: z.string().nullable(),
 });
 

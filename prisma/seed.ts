@@ -24,6 +24,7 @@ async function main() {
           minimumPrice: 150,
           rangeSpreadPct: 0.15,
           depositFlat: 150,
+          depositInstructions: "Venmo @demo-artist-tattoo",
         },
       },
       bookingRules: {

@@ -18,6 +18,7 @@ interface SubmissionResult {
   submissionId: string;
   status: "GREEN_AUTO_BOOKABLE" | "YELLOW_ARTIST_REVIEW" | "RED_CONSULTATION_REQUIRED";
   estimate: { priceLow: number; priceHigh: number; hours: number };
+  deposit: { amount: number; instructions: string | null };
   detectedStyle: string;
 }
 
@@ -538,6 +539,18 @@ function ResultStep({ result }: { result: SubmissionResult }) {
 // ---------------------------------------------------------------------------
 
 function BookingStep({ result }: { result: SubmissionResult }) {
+  const [booked, setBooked] = useState<Slot | null>(null);
+
+  if (booked) {
+    return (
+      <BookedConfirmation
+        slot={booked}
+        depositAmount={result.deposit.amount}
+        depositInstructions={result.deposit.instructions}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="font-display text-3xl leading-tight text-paper">
@@ -553,13 +566,12 @@ function BookingStep({ result }: { result: SubmissionResult }) {
         <p className="mt-1 text-paper/80">{result.estimate.hours.toFixed(1)} hours</p>
       </div>
 
-      <SlotBooker submissionId={result.submissionId} type="TATTOO" />
+      <SlotBooker submissionId={result.submissionId} type="TATTOO" onBooked={setBooked} />
 
       <p className="text-xs text-paper/40">
-        Picking a time takes you to a secure page to pay your deposit and
-        confirm the appointment. This is an estimated price based on the
-        information provided — final pricing may vary based on the artist's
-        assessment and the final design.
+        This is an estimated price based on the information provided — final
+        pricing may vary based on the artist's assessment and the final
+        design.
       </p>
     </div>
   );

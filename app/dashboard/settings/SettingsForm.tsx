@@ -72,6 +72,9 @@ export function PricingForm({ pricingConfig }: { pricingConfig: PricingConfig })
   const [depositPercent, setDepositPercent] = useState(
     pricingConfig.depositPercent != null ? String(Math.round(pricingConfig.depositPercent * 100)) : ""
   );
+  const [depositInstructions, setDepositInstructions] = useState(
+    pricingConfig.depositInstructions ?? ""
+  );
   const [cancellationPolicy, setCancellationPolicy] = useState(pricingConfig.cancellationPolicy ?? "");
 
   const [saving, setSaving] = useState(false);
@@ -95,6 +98,7 @@ export function PricingForm({ pricingConfig }: { pricingConfig: PricingConfig })
           depositType,
           depositFlat: depositType === "FLAT" ? Number(depositFlat) : null,
           depositPercent: depositType === "PERCENT" ? Number(depositPercent) / 100 : null,
+          depositInstructions: depositInstructions || null,
           cancellationPolicy: cancellationPolicy || null,
         }),
       });
@@ -210,6 +214,20 @@ export function PricingForm({ pricingConfig }: { pricingConfig: PricingConfig })
             />
           </Field>
         )}
+      </div>
+
+      <div className="mt-4">
+        <Field
+          label="How clients pay the deposit"
+          hint="Deposits aren't processed by this app — shown to the client after booking, and you confirm it's paid from the submission's page."
+        >
+          <input
+            value={depositInstructions}
+            onChange={(e) => setDepositInstructions(e.target.value)}
+            placeholder="e.g. Venmo @your-handle, or a PayPal.me link"
+            className={inputClass()}
+          />
+        </Field>
       </div>
 
       <div className="mt-4">

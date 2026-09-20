@@ -51,6 +51,10 @@ model PricingConfig {
   depositType      DepositType @default(FLAT)
   depositFlat      Float?      // e.g. 150.00
   depositPercent   Float?      // e.g. 0.20
+  // How the client actually pays the deposit — a Venmo/CashApp/PayPal
+  // handle or link, since payment isn't processed by this app (see the
+  // Appointment.depositPaid comment for why).
+  depositInstructions String?
   cancellationPolicy String?
 
   updatedAt        DateTime @updatedAt
@@ -217,9 +221,12 @@ model Appointment {
   startTime     DateTime
   endTime       DateTime
 
+  // Deposits aren't processed by this app — the client pays the artist
+  // directly (Venmo/CashApp/etc, see PricingConfig.depositInstructions) and
+  // the artist marks it received. depositPaid starts false on every new
+  // tattoo appointment.
   depositPaid   Boolean  @default(false)
   depositAmount Float?
-  stripePaymentIntentId String?
 
   status        AppointmentStatus @default(SCHEDULED)
   createdAt     DateTime @default(now())

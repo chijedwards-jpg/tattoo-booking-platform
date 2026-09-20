@@ -25,7 +25,7 @@ npm install
 
 # 4. Set up environment variables
 cp .env.example .env
-# then fill in DATABASE_URL, GEMINI_API_KEY, SESSION_SECRET, STRIPE_SECRET_KEY, RESEND_API_KEY
+# then fill in DATABASE_URL, GEMINI_API_KEY, SESSION_SECRET, RESEND_API_KEY
 
 # 5. Create the database tables from the schema
 npx prisma migrate dev --name init
@@ -47,7 +47,6 @@ Then open http://localhost:3000.
 | `@prisma/client` + `prisma` | Database ORM, matches `schema.prisma` |
 | `bcryptjs` | Password hashing for artist login |
 | (Gemini API, via `fetch`) | AI image analysis for tattoo style/complexity/time (PRD section 9) — no SDK package needed |
-| `stripe` | Deposit payments (PRD section 21) |
 | `resend` | Transactional email notifications (PRD section 28) |
 | `zod` | Runtime validation for API route inputs |
 | `date-fns`, `date-fns-tz` | Appointment/availability time math (PRD sections 17-19) |
@@ -59,18 +58,15 @@ Then open http://localhost:3000.
   Supabase project takes about 2 minutes to spin up if you don't have one.
 - `SESSION_SECRET` is required for artist login to work (it signs the session
   cookie) — generate one with `openssl rand -hex 32` or similar.
-- `GEMINI_API_KEY`, `STRIPE_SECRET_KEY`, and `RESEND_API_KEY` can be added
-  later — the pricing engine and schema work without them. You'll need the
-  Gemini key for the submission intake flow, since it calls the image-analysis
-  API route directly.
-- Tattoo appointments are only created once a deposit is paid, via a Stripe
-  webhook (`/api/stripe/webhook`) — this keeps an abandoned checkout from
-  permanently holding a slot. Locally, Stripe can't reach your machine
-  directly, so run `stripe listen --forward-to localhost:3000/api/stripe/webhook`
-  (requires the [Stripe CLI](https://stripe.com/docs/stripe-cli)) and put the
-  webhook signing secret it prints into `STRIPE_WEBHOOK_SECRET`. Without that
-  running, a test deposit payment will succeed on Stripe's side but the
-  appointment will never actually get booked.
+- `GEMINI_API_KEY` and `RESEND_API_KEY` can be added later — the pricing
+  engine and schema work without them. You'll need the Gemini key for the
+  submission intake flow, since it calls the image-analysis API route
+  directly.
+- Deposits aren't processed by this app — a tattoo appointment is booked
+  immediately (no payment gate), and the client is shown the artist's own
+  payment instructions (Venmo/CashApp/PayPal/etc, set in Settings → Pricing
+  & deposit). The artist marks the deposit received from the submission's
+  page in the dashboard once it actually arrives.
 - Everything under `lib/` is plain TypeScript with no Next.js-specific
   imports, so `npx tsx lib/pricingEngine.test.ts` works standalone even
   before the rest of the app is scaffolded.

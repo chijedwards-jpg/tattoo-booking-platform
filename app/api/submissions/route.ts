@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { analyzeInspirationImage } from "@/lib/aiAnalysis";
-import { calculateEstimate, decideRouting } from "@/lib/pricingEngine";
+import { calculateEstimate, decideRouting, calculateDeposit } from "@/lib/pricingEngine";
 
 const SubmissionSchema = z.object({
   artistSlug: z.string(),
@@ -160,6 +160,10 @@ export async function POST(req: NextRequest) {
       priceLow: estimate.priceLow,
       priceHigh: estimate.priceHigh,
       hours: estimate.adjustedHours,
+    },
+    deposit: {
+      amount: calculateDeposit(artist.pricingConfig, estimate.priceLow),
+      instructions: artist.pricingConfig.depositInstructions,
     },
     detectedStyle: aiResult.detectedStyle,
   });

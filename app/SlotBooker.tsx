@@ -9,11 +9,10 @@ export interface Slot {
 
 /**
  * Fetches open slots for a submission and lets the client book one.
- * Consultations (free) book immediately via /api/appointments and call
- * onBooked. Tattoo appointments require a deposit, so booking one instead
- * starts a Stripe Checkout session and navigates the client there — the
- * appointment itself isn't created until the deposit is actually paid, via
- * the checkout webhook, so onBooked never fires for this type.
+ * Booking doesn't process payment — it just reserves the slot immediately
+ * via /api/appointments. For tattoo appointments the deposit is paid
+ * directly to the artist afterward (see BookedConfirmation) and the artist
+ * marks it received from the dashboard.
  */
 export function SlotBooker({
   submissionId,
@@ -22,7 +21,7 @@ export function SlotBooker({
 }: {
   submissionId: string;
   type: "TATTOO" | "CONSULTATION";
-  onBooked?: (slot: Slot) => void;
+  onBooked: (slot: Slot) => void;
 }) {
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [booking, setBooking] = useState<string | null>(null);
@@ -40,32 +39,16 @@ export function SlotBooker({
     setBooking(slot.start);
     setError(null);
     try {
-      if (type === "TATTOO") {
-        const res = await fetch("/api/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ submissionId, startTime: slot.start }),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error ?? "Couldn't start checkout.");
-        }
-        const { url } = await res.json();
-        if (!url) throw new Error("Couldn't start checkout.");
-        window.location.href = url;
-        return;
-      }
-
       const res = await fetch("/api/appointments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionId, startTime: slot.start }),
+        body: JSON.stringify({ submissionId, startTime: slot.start, type }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Couldn't book that time.");
       }
-      onBooked?.(slot);
+      onBooked(slot);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -99,9 +82,7 @@ export function SlotBooker({
               className="rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-paper transition-colors hover:border-ink-red/60 disabled:opacity-40"
             >
               {booking === slot.start
-                ? type === "TATTOO"
-                  ? "Redirecting to checkout…"
-                  : "Booking…"
+                ? "Booking…"
                 : new Date(slot.start).toLocaleString(undefined, {
                     weekday: "short",
                     month: "short",
@@ -117,7 +98,15 @@ export function SlotBooker({
   );
 }
 
-export function BookedConfirmation({ slot }: { slot: Slot }) {
+export function BookedConfirmation({
+  slot,
+  depositAmount,
+  depositInstructions,
+}: {
+  slot: Slot;
+  depositAmount?: number | null;
+  depositInstructions?: string | null;
+}) {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-3xl leading-tight text-paper">You're booked</h1>
@@ -130,6 +119,20 @@ export function BookedConfirmation({ slot }: { slot: Slot }) {
           minute: "2-digit",
         })}
       </p>
+
+      {depositAmount != null && depositAmount > 0 && (
+        <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-4">
+          <p className="text-xs uppercase tracking-wide text-paper/40">Deposit due</p>
+          <p className="mt-1 text-xl text-paper">${depositAmount.toFixed(0)}</p>
+          <p className="mt-2 text-sm text-paper/70">
+            {depositInstructions || "Your artist will follow up with payment details."}
+          </p>
+          <p className="mt-3 text-xs text-paper/40">
+            Your slot is held, but not confirmed until the artist marks your
+            deposit as received.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
