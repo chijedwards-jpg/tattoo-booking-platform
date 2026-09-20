@@ -44,6 +44,14 @@ export default async function DashboardPage() {
           <div>
             <h1 className="font-display text-3xl text-paper">Submissions</h1>
             <p className="mt-1 text-sm text-paper/50">{artist.name}</p>
+            <a
+              href={`/a/${artist.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-xs text-paper/40 hover:text-paper/70"
+            >
+              Your booking page: /a/{artist.slug} ↗
+            </a>
           </div>
           <div className="flex items-center gap-3">
             <Link
