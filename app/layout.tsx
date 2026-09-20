@@ -1,12 +1,6 @@
 import type { Metadata } from "next";
-import { Oswald, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-
-const display = Oswald({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-display",
-});
 
 const body = Inter({
   subsets: ["latin"],
@@ -24,7 +18,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
+    <html lang="en" className={body.variable}>
       <body className="font-sans">{children}</body>
     </html>
   );

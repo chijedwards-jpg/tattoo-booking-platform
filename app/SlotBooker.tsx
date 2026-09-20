@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar, Clock, CheckCircle2 } from "lucide-react";
+import { Card } from "./ui";
+import { googleCalendarUrl } from "@/lib/googleCalendar";
 
 export interface Slot {
   start: string;
@@ -59,15 +62,15 @@ export function SlotBooker({
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-sm border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-paper">
+        <p className="mb-4 rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">
           {error}
         </p>
       )}
 
-      {slots === null && <p className="text-sm text-paper/50">Loading available times…</p>}
+      {slots === null && <p className="text-sm text-grey">Loading available times…</p>}
 
       {slots?.length === 0 && (
-        <p className="text-sm text-paper/50">
+        <p className="text-sm text-grey">
           No openings found right now — the artist will follow up directly.
         </p>
       )}
@@ -79,17 +82,29 @@ export function SlotBooker({
               key={slot.start}
               onClick={() => bookSlot(slot)}
               disabled={booking !== null}
-              className="rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-left text-sm text-paper transition-colors hover:border-ink-red/60 disabled:opacity-40"
+              className="flex items-center justify-between rounded-xl border border-line bg-card px-4 py-3 text-left text-sm text-ink transition-colors hover:border-ink-red/50 disabled:opacity-40"
             >
-              {booking === slot.start
-                ? "Booking…"
-                : new Date(slot.start).toLocaleString(undefined, {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+              {booking === slot.start ? (
+                "Booking…"
+              ) : (
+                <>
+                  <span className="flex items-center gap-2">
+                    <Calendar size={14} className="text-grey" />
+                    {new Date(slot.start).toLocaleDateString(undefined, {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                  <span className="flex items-center gap-2 text-grey">
+                    <Clock size={14} />
+                    {new Date(slot.start).toLocaleTimeString(undefined, {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </>
+              )}
             </button>
           ))}
         </div>
@@ -100,38 +115,60 @@ export function SlotBooker({
 
 export function BookedConfirmation({
   slot,
+  title,
   depositAmount,
   depositInstructions,
 }: {
   slot: Slot;
+  title?: string;
   depositAmount?: number | null;
   depositInstructions?: string | null;
 }) {
+  const start = new Date(slot.start);
+  const end = new Date(slot.end);
+  const calendarUrl = googleCalendarUrl({
+    title: title ?? "Tattoo appointment",
+    start,
+    end,
+  });
+
   return (
-    <div className="flex flex-col gap-4">
-      <h1 className="font-display text-3xl leading-tight text-paper">You're booked</h1>
-      <p className="text-sm text-paper/70">
-        {new Date(slot.start).toLocaleString(undefined, {
-          weekday: "long",
-          month: "long",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })}
-      </p>
+    <div className="flex flex-col gap-4 text-center">
+      <CheckCircle2 size={30} className="mx-auto text-pine" />
+      <div>
+        <h1 className="font-display text-2xl leading-tight text-ink">You're booked</h1>
+        <p className="mt-1 text-sm text-grey">
+          {start.toLocaleString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </p>
+      </div>
+
+      <a
+        href={calendarUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mx-auto inline-flex items-center gap-1.5 text-sm text-ink-red hover:underline"
+      >
+        <Calendar size={14} /> Add to Google Calendar
+      </a>
 
       {depositAmount != null && depositAmount > 0 && (
-        <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-4">
-          <p className="text-xs uppercase tracking-wide text-paper/40">Deposit due</p>
-          <p className="mt-1 text-xl text-paper">${depositAmount.toFixed(0)}</p>
-          <p className="mt-2 text-sm text-paper/70">
+        <Card className="text-left">
+          <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Deposit due</p>
+          <p className="mt-1 font-display text-2xl text-ink">${depositAmount.toFixed(0)}</p>
+          <p className="mt-2 text-sm text-ink">
             {depositInstructions || "Your artist will follow up with payment details."}
           </p>
-          <p className="mt-3 text-xs text-paper/40">
+          <p className="mt-3 text-xs text-grey">
             Your slot is held, but not confirmed until the artist marks your
             deposit as received.
           </p>
-        </div>
+        </Card>
       )}
     </div>
   );

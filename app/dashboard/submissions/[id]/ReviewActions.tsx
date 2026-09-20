@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, CalendarClock, Ban } from "lucide-react";
+import { Card, PrimaryButton, GhostButton, Field, inputClass } from "../../../ui";
 
 export default function ReviewActions({
   submissionId,
@@ -50,9 +52,11 @@ export default function ReviewActions({
 
   if (alreadyDecided) {
     return (
-      <p className="mt-6 rounded-sm border border-paper/10 bg-white/[0.02] p-4 text-sm text-paper/60">
-        This submission has already been marked <strong className="text-paper">{currentStatus}</strong>.
-      </p>
+      <Card className="mt-6">
+        <p className="text-sm text-grey">
+          This submission has already been marked <strong className="text-ink">{currentStatus}</strong>.
+        </p>
+      </Card>
     );
   }
 
@@ -60,74 +64,56 @@ export default function ReviewActions({
     <div className="mt-8 flex flex-col gap-4">
       {!overriding ? (
         <div className="flex gap-3">
-          <button
-            disabled={submitting}
-            onClick={() => updateStatus("APPROVED")}
-            className="flex-1 rounded-sm bg-ink-red py-3 text-sm font-medium text-paper disabled:opacity-40"
-          >
-            Approve estimate
-          </button>
-          <button
-            onClick={() => setOverriding(true)}
-            className="flex-1 rounded-sm border border-paper/20 py-3 text-sm text-paper/80"
-          >
+          <PrimaryButton className="flex-1" disabled={submitting} onClick={() => updateStatus("APPROVED")}>
+            <Check size={15} /> Approve estimate
+          </PrimaryButton>
+          <GhostButton className="flex-1" onClick={() => setOverriding(true)}>
             Edit estimate
-          </button>
+          </GhostButton>
         </div>
       ) : (
-        <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-4">
+        <Card>
           <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs text-paper/50">Low ($)</label>
+            <Field label="Low ($)">
               <input
                 type="number"
                 value={low}
                 onChange={(e) => setLow(Number(e.target.value))}
-                className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-paper outline-none focus:border-ink-red"
+                className={inputClass()}
               />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-paper/50">High ($)</label>
+            </Field>
+            <Field label="High ($)">
               <input
                 type="number"
                 value={high}
                 onChange={(e) => setHigh(Number(e.target.value))}
-                className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-paper outline-none focus:border-ink-red"
+                className={inputClass()}
               />
-            </div>
+            </Field>
           </div>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes to yourself (optional)"
             rows={2}
-            className="mt-3 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-sm text-paper outline-none placeholder:text-paper/30 focus:border-ink-red"
+            className={`mt-3 ${inputClass()}`}
           />
-          <button
-            disabled={submitting}
-            onClick={() => updateStatus("APPROVED", true)}
-            className="mt-3 w-full rounded-sm bg-ink-red py-3 text-sm font-medium text-paper disabled:opacity-40"
-          >
-            Save & approve
-          </button>
-        </div>
+          <PrimaryButton full className="mt-3" disabled={submitting} onClick={() => updateStatus("APPROVED", true)}>
+            <Check size={15} /> Save & approve
+          </PrimaryButton>
+        </Card>
       )}
 
       <div className="flex gap-3">
-        <button
-          disabled={submitting}
+        <GhostButton
+          className="flex-1 !py-2 text-xs"
           onClick={() => updateStatus("RED_CONSULTATION_REQUIRED")}
-          className="flex-1 rounded-sm border border-paper/15 py-2.5 text-xs text-paper/60"
         >
-          Require consultation instead
-        </button>
-        <button
-          disabled={submitting}
-          onClick={() => updateStatus("DECLINED")}
-          className="flex-1 rounded-sm border border-paper/15 py-2.5 text-xs text-paper/60"
-        >
-          Decline
-        </button>
+          <CalendarClock size={14} /> Require consultation instead
+        </GhostButton>
+        <GhostButton className="flex-1 !py-2 text-xs" onClick={() => updateStatus("DECLINED")}>
+          <Ban size={14} /> Decline
+        </GhostButton>
       </div>
     </div>
   );

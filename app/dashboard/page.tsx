@@ -2,21 +2,13 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import LogoutButton from "./LogoutButton";
+import { ChevronRight } from "lucide-react";
+import { Badge, StatCard } from "../ui";
+import { STATUS_META } from "./statusMeta";
 
-export const dynamic = "force-dynamic"; // always show fresh submissions, no caching
+export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  PENDING_ANALYSIS: { label: "Analyzing…", color: "bg-paper/20 text-paper/60" },
-  GREEN_AUTO_BOOKABLE: { label: "Auto-bookable", color: "bg-green-900/40 text-green-300" },
-  YELLOW_ARTIST_REVIEW: { label: "Needs review", color: "bg-yellow-900/40 text-yellow-300" },
-  RED_CONSULTATION_REQUIRED: { label: "Needs consultation", color: "bg-ink-red/30 text-red-300" },
-  APPROVED: { label: "Approved", color: "bg-green-900/40 text-green-300" },
-  DECLINED: { label: "Declined", color: "bg-white/10 text-paper/40" },
-  BOOKED: { label: "Booked", color: "bg-green-900/40 text-green-300" },
-};
-
-export default async function DashboardPage() {
+export default async function OverviewPage() {
   const artistId = await getSessionArtistId();
   if (!artistId) redirect("/login");
 
@@ -29,97 +21,63 @@ export default async function DashboardPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const counts = {
-    total: submissions.length,
-    pending: submissions.filter((s) =>
-      ["YELLOW_ARTIST_REVIEW", "RED_CONSULTATION_REQUIRED"].includes(s.status)
-    ).length,
-    autoBooked: submissions.filter((s) => s.status === "GREEN_AUTO_BOOKABLE").length,
-  };
-
-  return (
-    <main className="min-h-screen bg-ink text-paper">
-      <div className="mx-auto max-w-3xl px-6 py-10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-3xl text-paper">Submissions</h1>
-            <p className="mt-1 text-sm text-paper/50">{artist.name}</p>
-            <a
-              href={`/a/${artist.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-xs text-paper/40 hover:text-paper/70"
-            >
-              Your booking page: /a/{artist.slug} ↗
-            </a>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/settings"
-              className="rounded-sm border border-paper/15 px-4 py-2 text-xs text-paper/60 hover:text-paper"
-            >
-              Settings
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
-
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          <StatCard label="Total" value={counts.total} />
-          <StatCard label="Auto-bookable" value={counts.autoBooked} />
-          <StatCard label="Needs your input" value={counts.pending} />
-        </div>
-
-        <div className="mt-8 flex flex-col gap-3">
-          {submissions.length === 0 && (
-            <p className="py-12 text-center text-sm text-paper/40">
-              No submissions yet. They'll show up here as clients submit tattoos.
-            </p>
-          )}
-
-          {submissions.map((s) => {
-            const status = STATUS_LABEL[s.status] ?? STATUS_LABEL.PENDING_ANALYSIS;
-            return (
-              <Link
-                key={s.id}
-                href={`/dashboard/${s.id}`}
-                className="flex items-center gap-4 rounded-sm border border-paper/10 bg-white/[0.02] p-4 transition-colors hover:border-paper/25"
-              >
-                {s.inspirationImages[0] && (
-                  <img
-                    src={s.inspirationImages[0]}
-                    className="h-16 w-16 flex-shrink-0 rounded-sm object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-sm text-paper">
-                      {s.client.email}
-                    </span>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${status.color}`}>
-                      {status.label}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-paper/50">
-                    {s.placement} · {s.aiDetectedStyle ?? "—"}
-                    {s.estimatedPriceLow &&
-                      ` · $${s.estimatedPriceLow.toFixed(0)}–$${s.estimatedPriceHigh?.toFixed(0)}`}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-    </main>
+  const booked = submissions.filter((s) => s.status === "BOOKED");
+  const pending = submissions.filter((s) =>
+    ["YELLOW_ARTIST_REVIEW", "RED_CONSULTATION_REQUIRED"].includes(s.status)
   );
-}
+  const autoBooked = submissions.filter((s) => s.status === "GREEN_AUTO_BOOKABLE");
+  const revenue = booked.reduce((sum, s) => sum + (s.estimatedPriceLow ?? 0), 0);
 
-function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-4">
-      <p className="text-2xl text-paper">{value}</p>
-      <p className="mt-1 text-xs text-paper/50">{label}</p>
+    <div>
+      <h1 className="font-display text-3xl text-ink">Good to see you, {artist.name.split(" ")[0]}.</h1>
+      <p className="mt-1 text-sm text-grey">Here's what's come in.</p>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Submissions" value={submissions.length} />
+        <StatCard label="Booked" value={booked.length} sub={`$${revenue.toFixed(0)} estimated`} />
+        <StatCard label="Auto-bookable" value={autoBooked.length} />
+        <StatCard label="Needs your input" value={pending.length} />
+      </div>
+
+      <div className="mb-3 mt-8 flex items-center justify-between">
+        <h2 className="font-display text-xl text-ink">Recent submissions</h2>
+        <Link href="/dashboard/submissions" className="flex items-center gap-1 text-sm text-ink-red">
+          View all <ChevronRight size={14} />
+        </Link>
+      </div>
+
+      {submissions.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-line bg-card p-8 text-center text-sm text-grey">
+          Nothing yet. Submissions from your booking page will show up here.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {submissions.slice(0, 5).map((s) => {
+          const status = STATUS_META[s.status] ?? STATUS_META.PENDING_ANALYSIS;
+          return (
+            <Link
+              key={s.id}
+              href={`/dashboard/submissions/${s.id}`}
+              className="flex items-center justify-between rounded-xl border border-line bg-card px-4 py-3 text-left text-sm transition-colors hover:border-ink-red/40"
+            >
+              <div className="flex items-center gap-3">
+                {s.inspirationImages[0] && (
+                  <img src={s.inspirationImages[0]} className="h-9 w-9 rounded-lg object-cover" />
+                )}
+                <div>
+                  <p className="font-medium text-ink">
+                    {s.client.email} · {s.placement}
+                  </p>
+                  <p className="text-xs text-grey">{s.aiDetectedStyle ?? "—"}</p>
+                </div>
+              </div>
+              <Badge tone={status.tone}>{status.label}</Badge>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }

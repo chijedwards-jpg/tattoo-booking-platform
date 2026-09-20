@@ -1,8 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Upload, MapPin, Ruler, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Plus,
+} from "lucide-react";
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
 import { PLACEMENTS, type Placement } from "@/lib/placements";
+import { Badge, PrimaryButton, GhostButton, Chip, Card, StepDots } from "../../ui";
 
 const SIZE_PRESETS = [
   { value: "coin", label: "Coin-sized", hint: "~1–2 in" },
@@ -12,7 +16,8 @@ const SIZE_PRESETS = [
   { value: "larger", label: "Larger", hint: "custom" },
 ];
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+const STEP_KEYS = ["welcome", "upload", "reference", "placement", "size", "detail", "analyzing", "result"] as const;
+type StepKey = (typeof STEP_KEYS)[number];
 
 interface SubmissionResult {
   submissionId: string;
@@ -25,11 +30,14 @@ interface SubmissionResult {
 export default function IntakeFlow({
   artistSlug,
   artistName,
+  artistBio,
 }: {
   artistSlug: string;
   artistName: string;
+  artistBio: string | null;
 }) {
-  const [step, setStep] = useState<Step>(1);
+  const [stepIndex, setStepIndex] = useState(0);
+  const step = STEP_KEYS[stepIndex];
 
   const [inspirationPreview, setInspirationPreview] = useState<string | null>(null);
   const [inspirationFile, setInspirationFile] = useState<File | null>(null);
@@ -48,6 +56,7 @@ export default function IntakeFlow({
 
   async function handleSubmit() {
     if (!inspirationFile || !placement) return;
+    setStepIndex(STEP_KEYS.indexOf("analyzing"));
     setSubmitting(true);
     setSubmitError(null);
 
@@ -76,9 +85,10 @@ export default function IntakeFlow({
 
       const data: SubmissionResult = await res.json();
       setResult(data);
-      setStep(6);
+      setStepIndex(STEP_KEYS.indexOf("result"));
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong.");
+      setStepIndex(STEP_KEYS.indexOf("detail"));
     } finally {
       setSubmitting(false);
     }
@@ -92,45 +102,39 @@ export default function IntakeFlow({
   }
 
   function next() {
-    setStep((s) => (s < 5 ? ((s + 1) as Step) : s));
+    setStepIndex((i) => Math.min(i + 1, STEP_KEYS.indexOf("detail")));
   }
   function back() {
-    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
+    setStepIndex((i) => Math.max(i - 1, STEP_KEYS.indexOf("welcome") + 1));
   }
 
   return (
-    <main className="min-h-screen bg-ink text-paper">
+    <main className="min-h-screen bg-paper text-ink">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-8">
-        <Header step={step} artistName={artistName} />
+        {step !== "welcome" && step !== "analyzing" && step !== "result" && (
+          <div className="mb-8">
+            <StepDots count={5} current={stepIndex - 1} />
+          </div>
+        )}
 
-        <div className="mt-8 flex-1">
-          {step === 1 && (
-            <UploadStep
-              preview={inspirationPreview}
-              onUpload={handleUpload}
-              onNext={next}
-            />
+        <div className="flex-1">
+          {step === "welcome" && (
+            <WelcomeStep artistName={artistName} artistBio={artistBio} onNext={next} />
           )}
 
-          {step === 2 && (
-            <FreedomStep
-              freedom={freedom}
-              setFreedom={setFreedom}
-              onNext={next}
-              onBack={back}
-            />
+          {step === "upload" && (
+            <UploadStep preview={inspirationPreview} onUpload={handleUpload} onNext={next} onBack={back} />
           )}
 
-          {step === 3 && (
-            <PlacementStep
-              placement={placement}
-              setPlacement={setPlacement}
-              onNext={next}
-              onBack={back}
-            />
+          {step === "reference" && (
+            <FreedomStep freedom={freedom} setFreedom={setFreedom} onNext={next} onBack={back} />
           )}
 
-          {step === 4 && (
+          {step === "placement" && (
+            <PlacementStep placement={placement} setPlacement={setPlacement} onNext={next} onBack={back} />
+          )}
+
+          {step === "size" && (
             <SizeStep
               sizePreset={sizePreset}
               setSizePreset={setSizePreset}
@@ -143,7 +147,7 @@ export default function IntakeFlow({
             />
           )}
 
-          {step === 5 && (
+          {step === "detail" && (
             <DetailsStep
               description={description}
               setDescription={setDescription}
@@ -160,7 +164,15 @@ export default function IntakeFlow({
             />
           )}
 
-          {step === 6 && result && <ResultStep result={result} />}
+          {step === "analyzing" && (
+            <div className="py-24 text-center">
+              <Sparkles className="mx-auto animate-pulse text-ink-red" size={26} />
+              <p className="mt-4 font-display text-xl">Reading your design…</p>
+              <p className="mt-1 text-sm text-grey">Estimating style, complexity, and time.</p>
+            </div>
+          )}
+
+          {step === "result" && result && <ResultStep result={result} artistName={artistName} />}
         </div>
       </div>
     </main>
@@ -168,27 +180,41 @@ export default function IntakeFlow({
 }
 
 // ---------------------------------------------------------------------------
-// Header / progress
+// Step 0 — Welcome
 // ---------------------------------------------------------------------------
 
-function Header({ step, artistName }: { step: Step; artistName: string }) {
+function WelcomeStep({
+  artistName,
+  artistBio,
+  onNext,
+}: {
+  artistName: string;
+  artistBio: string | null;
+  onNext: () => void;
+}) {
+  const initials = artistName
+    .split(" ")
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
   return (
-    <div>
-      <p className="font-display text-2xl tracking-tight text-paper">
-        Start your tattoo with {artistName}
-      </p>
-      {step <= 5 && (
-        <div className="mt-4 flex gap-1.5">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              className={`h-1 flex-1 rounded-full transition-colors ${
-                i <= step ? "bg-ink-red" : "bg-white/10"
-              }`}
-            />
-          ))}
-        </div>
-      )}
+    <div className="pt-8 text-center">
+      <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-ink">
+        <span className="font-display text-2xl text-paper">{initials}</span>
+      </div>
+      <h1 className="font-display text-3xl leading-tight text-ink">{artistName}</h1>
+      {artistBio && <p className="mt-4 text-[15px] leading-relaxed text-ink/80">{artistBio}</p>}
+
+      <div className="mt-8">
+        <PrimaryButton full onClick={onNext}>
+          Start your tattoo <ArrowRight size={16} />
+        </PrimaryButton>
+        <p className="mt-3 text-xs text-grey">
+          Upload → estimate → book. No back-and-forth if it's straightforward.
+        </p>
+      </div>
     </div>
   );
 }
@@ -201,31 +227,31 @@ function UploadStep({
   preview,
   onUpload,
   onNext,
+  onBack,
 }: {
   preview: string | null;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onNext: () => void;
+  onBack: () => void;
 }) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           What are you looking to get tattooed?
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           Upload a photo, screenshot, or drawing of what you have in mind.
         </p>
       </div>
 
-      <label className="group relative flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-sm border border-dashed border-paper/25 bg-white/[0.02] transition-colors hover:border-ink-red/60">
+      <label className="group relative flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-card transition-colors hover:border-ink-red/60">
         {preview ? (
           <img src={preview} alt="Inspiration" className="h-full w-full object-cover" />
         ) : (
           <div className="flex flex-col items-center gap-3 px-8 text-center">
-            <PlusIcon />
-            <span className="text-sm text-paper/50">
-              Tap to upload an image
-            </span>
+            <Upload size={22} className="text-ink-red" />
+            <span className="text-sm text-grey">Tap to upload an image</span>
           </div>
         )}
         <input
@@ -236,22 +262,8 @@ function UploadStep({
         />
       </label>
 
-      <button
-        disabled={!preview}
-        onClick={onNext}
-        className="w-full rounded-sm bg-ink-red py-3.5 font-medium text-paper transition-opacity disabled:opacity-30"
-      >
-        Continue
-      </button>
+      <StepNav onNext={onNext} onBack={onBack} disabled={!preview} />
     </div>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-paper/40">
-      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -273,28 +285,32 @@ function FreedomStep({
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           How closely should we follow this?
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           Slide toward the artist's side if you want them to adapt it to your body and their style.
         </p>
       </div>
 
-      <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-6">
+      <Card>
         <input
           type="range"
           min={0}
           max={100}
           value={freedom}
           onChange={(e) => setFreedom(Number(e.target.value))}
-          className="w-full accent-ink-red"
+          className="range-slider w-full"
+          style={{
+            background: `linear-gradient(90deg, #42522F ${freedom}%, #D8CFB8 ${freedom}%)`,
+          }}
         />
-        <div className="mt-4 flex justify-between text-xs text-paper/50">
+        <div className="mt-4 flex justify-between font-mono text-[11px] uppercase tracking-wide text-grey">
           <span>Follow the reference</span>
           <span>Artist's interpretation</span>
         </div>
-      </div>
+      </Card>
+      <p className="-mt-4 text-center text-xs text-grey">{freedom}% toward artist's interpretation</p>
 
       <StepNav onNext={onNext} onBack={onBack} />
     </div>
@@ -319,24 +335,15 @@ function PlacementStep({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
-          Where do you want it?
-        </h1>
+        <h1 className="font-display text-3xl leading-tight text-ink">Where do you want it?</h1>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         {PLACEMENTS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setPlacement(p.value)}
-            className={`rounded-sm border px-4 py-3 text-left text-sm transition-colors ${
-              placement === p.value
-                ? "border-ink-red bg-ink-red/10 text-paper"
-                : "border-paper/10 bg-white/[0.02] text-paper/70 hover:border-paper/25"
-            }`}
-          >
+          <Chip key={p.value} active={placement === p.value} onClick={() => setPlacement(p.value)}>
+            <MapPin size={13} className="-mt-0.5 mr-1.5 inline" />
             {p.label}
-          </button>
+          </Chip>
         ))}
       </div>
 
@@ -371,46 +378,41 @@ function SizeStep({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
-          About how big?
-        </h1>
+        <h1 className="font-display text-3xl leading-tight text-ink">About how big?</h1>
       </div>
 
       <div className="flex flex-col gap-2">
         {SIZE_PRESETS.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setSizePreset(s.value)}
-            className={`flex items-center justify-between rounded-sm border px-4 py-3.5 text-left transition-colors ${
-              sizePreset === s.value
-                ? "border-ink-red bg-ink-red/10"
-                : "border-paper/10 bg-white/[0.02] hover:border-paper/25"
-            }`}
-          >
-            <span className="text-sm text-paper">{s.label}</span>
-            <span className="text-xs text-paper/40">{s.hint}</span>
-          </button>
+          <Chip key={s.value} active={sizePreset === s.value} onClick={() => setSizePreset(s.value)}>
+            <div className="flex w-full items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                {s.value === "larger" && <Ruler size={13} />}
+                {s.label}
+              </span>
+              <span className="text-xs text-grey">{s.hint}</span>
+            </div>
+          </Chip>
         ))}
       </div>
 
       {sizePreset === "larger" && (
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="text-xs text-paper/50">Width (in)</label>
+            <label className="font-mono text-xs uppercase tracking-wide text-grey">Width (in)</label>
             <input
               type="number"
               value={customWidth}
               onChange={(e) => setCustomWidth(e.target.value)}
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-paper outline-none focus:border-ink-red"
+              className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-ink outline-none focus:border-ink-red"
             />
           </div>
           <div className="flex-1">
-            <label className="text-xs text-paper/50">Height (in)</label>
+            <label className="font-mono text-xs uppercase tracking-wide text-grey">Height (in)</label>
             <input
               type="number"
               value={customHeight}
               onChange={(e) => setCustomHeight(e.target.value)}
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-paper outline-none focus:border-ink-red"
+              className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-ink outline-none focus:border-ink-red"
             />
           </div>
         </div>
@@ -422,7 +424,7 @@ function SizeStep({
 }
 
 // ---------------------------------------------------------------------------
-// Step 5 — Details + summary (submission happens here, wired up later)
+// Step 5 — Details + summary (submission happens here)
 // ---------------------------------------------------------------------------
 
 function DetailsStep({
@@ -457,49 +459,47 @@ function DetailsStep({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           Last thing — where should we send your estimate?
         </h1>
       </div>
 
       <div>
-        <label className="text-xs text-paper/50">Email</label>
+        <label className="font-mono text-xs uppercase tracking-wide text-grey">Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
-          className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none placeholder:text-paper/30 focus:border-ink-red"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
         />
       </div>
 
       <div>
-        <label className="text-xs text-paper/50">Anything else? (optional)</label>
+        <label className="font-mono text-xs uppercase tracking-wide text-grey">Anything else? (optional)</label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. Keep it black and grey, make the lettering a bit bigger…"
           rows={3}
-          className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none placeholder:text-paper/30 focus:border-ink-red"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
         />
       </div>
 
-      <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-4">
-        <p className="text-xs uppercase tracking-wide text-paper/40">Summary</p>
+      <Card>
+        <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Summary</p>
         <div className="mt-3 flex gap-3">
-          {preview && (
-            <img src={preview} className="h-16 w-16 rounded-sm object-cover" />
-          )}
-          <div className="flex flex-col justify-center gap-1 text-sm text-paper/80">
+          {preview && <img src={preview} className="h-16 w-16 rounded-lg object-cover" />}
+          <div className="flex flex-col justify-center gap-1 text-sm text-ink">
             <span>{PLACEMENTS.find((p) => p.value === placement)?.label ?? "—"}</span>
             <span>{SIZE_PRESETS.find((s) => s.value === sizePreset)?.label ?? "—"}</span>
             <span>{freedom}% artist's interpretation</span>
           </div>
         </div>
-      </div>
+      </Card>
 
       {submitError && (
-        <p className="rounded-sm border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-paper">
+        <p className="rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">
           {submitError}
         </p>
       )}
@@ -518,7 +518,9 @@ function DetailsStep({
 // Step 6 — Result
 // ---------------------------------------------------------------------------
 
-function ResultStep({ result }: { result: SubmissionResult }) {
+function ResultStep({ result, artistName }: { result: SubmissionResult; artistName: string }) {
+  const firstName = artistName.split(" ")[0];
+
   if (result.status === "GREEN_AUTO_BOOKABLE") {
     return <BookingStep result={result} />;
   }
@@ -526,18 +528,19 @@ function ResultStep({ result }: { result: SubmissionResult }) {
   if (result.status === "YELLOW_ARTIST_REVIEW") {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <Badge tone="yellow">Needs artist review</Badge>
+        <h1 className="font-display text-3xl leading-tight text-ink">
           Your tattoo needs a quick review
         </h1>
-        <p className="text-sm text-paper/70">
-          We've sent your design to the artist for a quick look before we can
-          confirm a price. You'll hear back soon.
+        <p className="text-sm text-grey">
+          We've sent your design to {firstName} for a quick look before we can
+          confirm a price. You'll hear back by email.
         </p>
       </div>
     );
   }
 
-  return <ConsultationBookingStep submissionId={result.submissionId} />;
+  return <ConsultationBookingStep submissionId={result.submissionId} artistFirstName={firstName} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,6 +554,7 @@ function BookingStep({ result }: { result: SubmissionResult }) {
     return (
       <BookedConfirmation
         slot={booked}
+        title="Tattoo appointment"
         depositAmount={result.deposit.amount}
         depositInstructions={result.deposit.instructions}
       />
@@ -559,25 +563,29 @@ function BookingStep({ result }: { result: SubmissionResult }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="font-display text-3xl leading-tight text-paper">
-        Pick a time
-      </h1>
-
-      <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-5">
-        <p className="text-xs uppercase tracking-wide text-paper/40">Estimated price</p>
-        <p className="mt-1 text-2xl text-paper">
-          ${result.estimate.priceLow.toFixed(0)}–${result.estimate.priceHigh.toFixed(0)}
-        </p>
-        <p className="mt-3 text-xs uppercase tracking-wide text-paper/40">Estimated time</p>
-        <p className="mt-1 text-paper/80">{result.estimate.hours.toFixed(1)} hours</p>
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-2xl leading-tight text-ink">Your estimate</h1>
+        <Badge tone="green">Auto-bookable</Badge>
       </div>
 
-      <SlotBooker submissionId={result.submissionId} type="TATTOO" onBooked={setBooked} />
+      <Card>
+        <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Estimated price</p>
+        <p className="mt-1 font-display text-2xl text-ink">
+          ${result.estimate.priceLow.toFixed(0)}–${result.estimate.priceHigh.toFixed(0)}
+        </p>
+        <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-grey">Estimated time</p>
+        <p className="mt-1 text-ink">{result.estimate.hours.toFixed(1)} hours</p>
+      </Card>
 
-      <p className="text-xs text-paper/40">
-        This is an estimated price based on the information provided — final
-        pricing may vary based on the artist's assessment and the final
-        design.
+      <div>
+        <h3 className="mb-2 font-display text-xl text-ink">Pick a time</h3>
+        <SlotBooker submissionId={result.submissionId} type="TATTOO" onBooked={setBooked} />
+      </div>
+
+      <p className="text-xs text-grey">
+        Picking a time reserves the slot. This is an estimated price based on
+        the information provided — final pricing may vary based on the
+        artist's assessment and the final design.
       </p>
     </div>
   );
@@ -587,30 +595,30 @@ function BookingStep({ result }: { result: SubmissionResult }) {
 // Consultation booking — RED submissions need to talk it through first
 // ---------------------------------------------------------------------------
 
-function ConsultationBookingStep({ submissionId }: { submissionId: string }) {
+function ConsultationBookingStep({
+  submissionId,
+  artistFirstName,
+}: {
+  submissionId: string;
+  artistFirstName: string;
+}) {
   const [booked, setBooked] = useState<Slot | null>(null);
 
   if (booked) {
-    return (
-      <div className="flex flex-col gap-4">
-        <BookedConfirmation slot={booked} />
-        <p className="text-xs text-paper/40">
-          The artist will talk through the design and placement with you at
-          this appointment before giving a final price.
-        </p>
-      </div>
-    );
+    return <BookedConfirmation slot={booked} title="Consultation" />;
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+      <div className="flex flex-col gap-3">
+        <Badge tone="red">Consultation required</Badge>
+        <h1 className="font-display text-3xl leading-tight text-ink">
           This one needs a consultation
         </h1>
-        <p className="mt-2 text-sm text-paper/70">
-          The artist will need to talk through the design and placement with
-          you before giving an accurate price. Pick a time below.
+        <p className="text-sm text-grey">
+          {artistFirstName} will need to talk through the design and
+          placement with you before giving an accurate price. Pick a time
+          below.
         </p>
       </div>
 
@@ -645,19 +653,12 @@ function StepNav({
 }) {
   return (
     <div className="flex gap-3">
-      <button
-        onClick={onBack}
-        className="rounded-sm border border-paper/15 px-5 py-3.5 text-sm text-paper/70"
-      >
-        Back
-      </button>
-      <button
-        onClick={onNext}
-        disabled={disabled}
-        className="flex-1 rounded-sm bg-ink-red py-3.5 font-medium text-paper transition-opacity disabled:opacity-30"
-      >
-        {nextLabel}
-      </button>
+      <GhostButton onClick={onBack}>
+        <ChevronLeft size={15} /> Back
+      </GhostButton>
+      <PrimaryButton onClick={onNext} disabled={disabled} full className="flex-1">
+        {nextLabel} <ChevronRight size={15} />
+      </PrimaryButton>
     </div>
   );
 }

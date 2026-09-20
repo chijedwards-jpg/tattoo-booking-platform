@@ -2,17 +2,22 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Calendar } from "lucide-react";
+import { Card, Badge, PrimaryButton, GhostButton } from "../../../ui";
+import { googleCalendarUrl } from "@/lib/googleCalendar";
 
 export default function DepositStatus({
   appointmentId,
   type,
   startTime,
+  endTime,
   depositPaid,
   depositAmount,
 }: {
   appointmentId: string;
   type: "TATTOO" | "CONSULTATION";
   startTime: string;
+  endTime: string;
   depositPaid: boolean;
   depositAmount: number | null;
 }) {
@@ -41,12 +46,18 @@ export default function DepositStatus({
     }
   }
 
+  const calendarUrl = googleCalendarUrl({
+    title: type === "TATTOO" ? "Tattoo appointment" : "Consultation",
+    start: new Date(startTime),
+    end: new Date(endTime),
+  });
+
   return (
-    <div className="mt-8 rounded-sm border border-paper/10 bg-white/[0.02] p-5">
-      <p className="text-xs uppercase tracking-wide text-paper/40">
+    <Card className="mt-8">
+      <p className="font-mono text-[11px] uppercase tracking-wide text-grey">
         {type === "TATTOO" ? "Tattoo appointment" : "Consultation"}
       </p>
-      <p className="mt-1 text-lg text-paper">
+      <p className="mt-1 font-display text-lg text-ink">
         {new Date(startTime).toLocaleString(undefined, {
           weekday: "long",
           month: "long",
@@ -55,41 +66,35 @@ export default function DepositStatus({
           minute: "2-digit",
         })}
       </p>
+      <a
+        href={calendarUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1 inline-flex items-center gap-1.5 text-xs text-ink-red hover:underline"
+      >
+        <Calendar size={13} /> Add to Google Calendar
+      </a>
 
       {type === "TATTOO" && (
         <div className="mt-4 flex items-center gap-3">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              depositPaid ? "bg-green-900/40 text-green-300" : "bg-yellow-900/40 text-yellow-300"
-            }`}
-          >
+          <Badge tone={depositPaid ? "green" : "yellow"}>
             {depositPaid ? "Deposit received" : "Deposit pending"}
-          </span>
-          {depositAmount != null && (
-            <span className="text-sm text-paper/60">${depositAmount.toFixed(0)}</span>
-          )}
+          </Badge>
+          {depositAmount != null && <span className="text-sm text-grey">${depositAmount.toFixed(0)}</span>}
         </div>
       )}
 
       <div className="mt-4 flex gap-3">
         {type === "TATTOO" && !depositPaid && (
-          <button
-            onClick={() => act("MARK_DEPOSIT_RECEIVED")}
-            disabled={submitting}
-            className="rounded-sm bg-ink-red px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
-          >
+          <PrimaryButton onClick={() => act("MARK_DEPOSIT_RECEIVED")} disabled={submitting}>
             Mark deposit received
-          </button>
+          </PrimaryButton>
         )}
-        <button
-          onClick={() => act("CANCEL")}
-          disabled={submitting}
-          className="rounded-sm border border-paper/15 px-4 py-2 text-sm text-paper/70 disabled:opacity-40"
-        >
+        <GhostButton onClick={() => act("CANCEL")} disabled={submitting}>
           Cancel appointment
-        </button>
+        </GhostButton>
       </div>
       {error && <p className="mt-2 text-xs text-ink-red">{error}</p>}
-    </div>
+    </Card>
   );
 }

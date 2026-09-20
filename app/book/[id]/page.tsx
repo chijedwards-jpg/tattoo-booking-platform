@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar } from "lucide-react";
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
+import { Badge, Card } from "../../ui";
+import { googleCalendarUrl } from "@/lib/googleCalendar";
 
 interface PublicSubmission {
   id: string;
@@ -39,10 +42,10 @@ export default function BookPage({ params }: { params: { id: string } }) {
   if (notFound) {
     return (
       <Shell>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           We couldn't find that request
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           This booking link may be out of date. Reach out to the artist
           directly if you think this is a mistake.
         </p>
@@ -53,18 +56,20 @@ export default function BookPage({ params }: { params: { id: string } }) {
   if (!submission) {
     return (
       <Shell>
-        <p className="text-sm text-paper/50">Loading…</p>
+        <p className="text-sm text-grey">Loading…</p>
       </Shell>
     );
   }
 
   if (booked) {
+    const isConsultation = submission.status === "RED_CONSULTATION_REQUIRED";
     return (
       <Shell>
         <BookedConfirmation
           slot={booked}
-          depositAmount={submission.deposit?.amount}
-          depositInstructions={submission.deposit?.instructions}
+          title={isConsultation ? "Consultation" : "Tattoo appointment"}
+          depositAmount={isConsultation ? null : submission.deposit?.amount}
+          depositInstructions={isConsultation ? null : submission.deposit?.instructions}
         />
       </Shell>
     );
@@ -72,13 +77,18 @@ export default function BookPage({ params }: { params: { id: string } }) {
 
   if (submission.status === "BOOKED") {
     const appt = submission.appointment;
+    const calendarUrl = appt
+      ? googleCalendarUrl({
+          title: appt.type === "TATTOO" ? "Tattoo appointment" : "Consultation",
+          start: new Date(appt.startTime),
+          end: new Date(new Date(appt.startTime).getTime() + 60 * 60 * 1000),
+        })
+      : null;
     return (
       <Shell>
-        <h1 className="font-display text-3xl leading-tight text-paper">
-          Already booked
-        </h1>
+        <h1 className="font-display text-3xl leading-tight text-ink">Already booked</h1>
         {appt && (
-          <p className="mt-2 text-sm text-paper/70">
+          <p className="mt-2 text-sm text-grey">
             {new Date(appt.startTime).toLocaleString(undefined, {
               weekday: "long",
               month: "long",
@@ -88,8 +98,18 @@ export default function BookPage({ params }: { params: { id: string } }) {
             })}
           </p>
         )}
+        {calendarUrl && (
+          <a
+            href={calendarUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-ink-red hover:underline"
+          >
+            <Calendar size={14} /> Add to Google Calendar
+          </a>
+        )}
         {appt?.type === "TATTOO" && (
-          <p className="mt-4 text-xs text-paper/40">
+          <p className="mt-4 text-xs text-grey">
             {appt.depositPaid
               ? "Deposit received — see you then."
               : "Your slot is held, but not confirmed until the artist marks your deposit as received."}
@@ -102,10 +122,10 @@ export default function BookPage({ params }: { params: { id: string } }) {
   if (submission.status === "DECLINED") {
     return (
       <Shell>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           This request was declined
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           Reach out to the artist directly if you have questions.
         </p>
       </Shell>
@@ -115,10 +135,11 @@ export default function BookPage({ params }: { params: { id: string } }) {
   if (submission.status === "RED_CONSULTATION_REQUIRED") {
     return (
       <Shell>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <Badge tone="red">Consultation required</Badge>
+        <h1 className="mt-3 font-display text-3xl leading-tight text-ink">
           This one needs a consultation
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           The artist will need to talk through the design and placement with
           you before giving an accurate price. Pick a time below.
         </p>
@@ -132,10 +153,10 @@ export default function BookPage({ params }: { params: { id: string } }) {
   if (!submission.bookable) {
     return (
       <Shell>
-        <h1 className="font-display text-3xl leading-tight text-paper">
+        <h1 className="font-display text-3xl leading-tight text-ink">
           Still under review
         </h1>
-        <p className="mt-2 text-sm text-paper/60">
+        <p className="mt-2 text-sm text-grey">
           The artist hasn't confirmed a price yet. Check back later, or wait
           for the email once it's ready.
         </p>
@@ -145,32 +166,31 @@ export default function BookPage({ params }: { params: { id: string } }) {
 
   return (
     <Shell>
-      <h1 className="font-display text-3xl leading-tight text-paper">
-        Pick a time
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-display text-3xl leading-tight text-ink">Pick a time</h1>
+        <Badge tone="green">Auto-bookable</Badge>
+      </div>
 
-      <div className="mt-6 rounded-sm border border-paper/10 bg-white/[0.02] p-5">
-        <p className="text-xs uppercase tracking-wide text-paper/40">
-          Estimated price
-        </p>
-        <p className="mt-1 text-2xl text-paper">
+      <Card className="mt-6">
+        <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Estimated price</p>
+        <p className="mt-1 font-display text-2xl text-ink">
           ${submission.priceLow?.toFixed(0)}–${submission.priceHigh?.toFixed(0)}
         </p>
         {submission.hours != null && (
           <>
-            <p className="mt-3 text-xs uppercase tracking-wide text-paper/40">
+            <p className="mt-3 font-mono text-[11px] uppercase tracking-wide text-grey">
               Estimated time
             </p>
-            <p className="mt-1 text-paper/80">{submission.hours.toFixed(1)} hours</p>
+            <p className="mt-1 text-ink">{submission.hours.toFixed(1)} hours</p>
           </>
         )}
-      </div>
+      </Card>
 
       <div className="mt-4">
         <SlotBooker submissionId={submission.id} type="TATTOO" onBooked={setBooked} />
       </div>
 
-      <p className="mt-6 text-xs text-paper/40">
+      <p className="mt-6 text-xs text-grey">
         This is an estimated price based on the information provided. Final
         pricing may vary based on the artist's assessment and the final
         design.
@@ -181,7 +201,7 @@ export default function BookPage({ params }: { params: { id: string } }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-ink text-paper">
+    <main className="min-h-screen bg-paper text-ink">
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-5 py-8">
         {children}
       </div>

@@ -21,5 +21,5 @@ export default async function ArtistIntakePage({
     notFound();
   }
 
-  return <IntakeFlow artistSlug={artist.slug} artistName={artist.name} />;
+  return <IntakeFlow artistSlug={artist.slug} artistName={artist.name} artistBio={artist.bio} />;
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Field, PrimaryButton, inputClass } from "../ui";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -36,74 +37,64 @@ export default function SignupPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ink text-paper">
+    <main className="flex min-h-screen items-center justify-center bg-paper text-ink">
       <form onSubmit={handleSubmit} className="w-full max-w-sm px-6">
-        <h1 className="font-display text-3xl text-paper">Create your artist account</h1>
+        <h1 className="font-display text-3xl text-ink">Create your artist account</h1>
 
         <div className="mt-6 flex flex-col gap-4">
-          <div>
-            <label className="text-xs text-paper/50">Your name</label>
+          <Field label="Your name">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none focus:border-ink-red"
+              className={inputClass()}
             />
-          </div>
-          <div>
-            <label className="text-xs text-paper/50">
-              Booking page URL — letters, numbers, dashes only
-            </label>
-            <div className="mt-1 flex items-center rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper/40 focus-within:border-ink-red">
+          </Field>
+          <Field label="Booking page URL — letters, numbers, dashes only">
+            <div className="flex items-center rounded-lg border border-line bg-paper px-3 py-2.5 text-sm text-grey focus-within:border-ink-red">
               <span>yoursite.com/a/</span>
               <input
                 value={slug}
                 onChange={(e) => setSlug(e.target.value.toLowerCase())}
                 required
-                className="flex-1 bg-transparent text-paper outline-none"
+                className="flex-1 bg-transparent text-ink outline-none"
               />
             </div>
-          </div>
-          <div>
-            <label className="text-xs text-paper/50">Email</label>
+          </Field>
+          <Field label="Email">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none focus:border-ink-red"
+              className={inputClass()}
             />
-          </div>
-          <div>
-            <label className="text-xs text-paper/50">Password (min. 8 characters)</label>
+          </Field>
+          <Field label="Password (min. 8 characters)">
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none focus:border-ink-red"
+              className={inputClass()}
             />
-          </div>
+          </Field>
 
           {error && (
-            <p className="rounded-sm border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-paper">
+            <p className="rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-sm bg-ink-red py-3 text-sm font-medium text-paper disabled:opacity-40"
-          >
+          <PrimaryButton type="submit" full disabled={submitting}>
             {submitting ? "Creating account…" : "Create account"}
-          </button>
+          </PrimaryButton>
         </div>
 
-        <p className="mt-6 text-center text-sm text-paper/50">
+        <p className="mt-6 text-center text-sm text-grey">
           Already have an account?{" "}
-          <a href="/login" className="text-paper underline">
+          <a href="/login" className="text-ink underline">
             Log in
           </a>
         </p>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { AvailabilityBlock, AvailabilityType } from "@prisma/client";
+import { Card, Field, PrimaryButton, inputClass } from "../../ui";
 
 const DAY_LABELS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -9,10 +11,6 @@ const TYPE_LABEL: Record<AvailabilityType, string> = {
   TATTOO: "Tattoo appointments",
   CONSULTATION: "Consultations",
 };
-
-function inputClass() {
-  return "rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-sm text-paper outline-none focus:border-ink-red";
-}
 
 function sortBlocks(blocks: AvailabilityBlock[]) {
   return [...blocks].sort((a, b) => {
@@ -58,16 +56,14 @@ export function AvailabilityForm({ blocks }: { blocks: AvailabilityBlock[] }) {
   const consultationRows = rows.filter((b) => b.type === "CONSULTATION");
 
   return (
-    <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-5">
+    <Card>
       {(["TATTOO", "CONSULTATION"] as AvailabilityType[]).map((t) => {
         const group = t === "TATTOO" ? tattooRows : consultationRows;
         return (
           <div key={t} className="mb-5 last:mb-0">
-            <p className="text-xs uppercase tracking-wide text-paper/40">{TYPE_LABEL[t]}</p>
+            <p className="font-mono text-[11px] uppercase tracking-wide text-grey">{TYPE_LABEL[t]}</p>
             <div className="mt-2 flex flex-col gap-2">
-              {group.length === 0 && (
-                <p className="text-sm text-paper/40">No weekly hours set.</p>
-              )}
+              {group.length === 0 && <p className="text-sm text-grey">No weekly hours set.</p>}
               {group.map((block) => (
                 <AvailabilityRow
                   key={block.id}
@@ -81,64 +77,64 @@ export function AvailabilityForm({ blocks }: { blocks: AvailabilityBlock[] }) {
         );
       })}
 
-      <form onSubmit={addBlock} className="mt-4 flex flex-wrap items-end gap-2 border-t border-paper/10 pt-4">
+      <form onSubmit={addBlock} className="mt-4 flex flex-wrap items-end gap-2 border-t border-line pt-4">
         <div>
-          <label className="text-xs text-paper/50">Type</label>
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as AvailabilityType)}
-            className={`mt-1 ${inputClass()}`}
-          >
-            <option value="TATTOO">Tattoo</option>
-            <option value="CONSULTATION">Consultation</option>
-          </select>
+          <Field label="Type">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as AvailabilityType)}
+              className={inputClass()}
+            >
+              <option value="TATTOO">Tattoo</option>
+              <option value="CONSULTATION">Consultation</option>
+            </select>
+          </Field>
         </div>
 
         <div>
-          <label className="text-xs text-paper/50">Day</label>
-          <select
-            value={dayOfWeek}
-            onChange={(e) => setDayOfWeek(Number(e.target.value))}
-            className={`mt-1 ${inputClass()}`}
-          >
-            {DAY_LABELS.map((label, i) => (
-              <option key={i} value={i}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <Field label="Day">
+            <select
+              value={dayOfWeek}
+              onChange={(e) => setDayOfWeek(Number(e.target.value))}
+              className={inputClass()}
+            >
+              {DAY_LABELS.map((label, i) => (
+                <option key={i} value={i}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
         </div>
 
         <div>
-          <label className="text-xs text-paper/50">Start</label>
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className={`mt-1 ${inputClass()}`}
-          />
+          <Field label="Start">
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className={inputClass()}
+            />
+          </Field>
         </div>
 
         <div>
-          <label className="text-xs text-paper/50">End</label>
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            className={`mt-1 ${inputClass()}`}
-          />
+          <Field label="End">
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className={inputClass()}
+            />
+          </Field>
         </div>
 
-        <button
-          type="submit"
-          disabled={adding}
-          className="rounded-sm bg-ink-red px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
-        >
+        <PrimaryButton type="submit" disabled={adding}>
           Add
-        </button>
+        </PrimaryButton>
       </form>
       {addError && <p className="mt-2 text-xs text-ink-red">{addError}</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -191,33 +187,33 @@ function AvailabilityRow({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 rounded-lg bg-paper p-2.5">
       <div className="flex items-center gap-2">
-        <span className="w-24 text-sm text-paper/80">{DAY_LABELS[block.dayOfWeek ?? 0]}</span>
+        <span className="w-24 text-sm text-ink">{DAY_LABELS[block.dayOfWeek ?? 0]}</span>
         <input
           type="time"
           value={startTime}
           onChange={(e) => setStartTime(e.target.value)}
-          className={inputClass()}
+          className={`!mt-0 ${inputClass()}`}
         />
-        <span className="text-paper/40">–</span>
+        <span className="text-grey">–</span>
         <input
           type="time"
           value={endTime}
           onChange={(e) => setEndTime(e.target.value)}
-          className={inputClass()}
+          className={`!mt-0 ${inputClass()}`}
         />
         {dirty && (
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-sm border border-ink-red/60 px-3 py-2 text-xs text-paper disabled:opacity-40"
+            className="rounded-full border border-ink-red/60 px-3 py-2 text-xs text-ink disabled:opacity-40"
           >
             Save
           </button>
         )}
-        <button onClick={remove} className="ml-auto text-xs text-paper/40 hover:text-ink-red">
-          Remove
+        <button onClick={remove} className="ml-auto text-grey hover:text-ink-red">
+          <Trash2 size={15} />
         </button>
       </div>
       {error && <p className="text-xs text-ink-red">{error}</p>}

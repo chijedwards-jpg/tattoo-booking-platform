@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Field, PrimaryButton, inputClass } from "../ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,50 +35,44 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-ink text-paper">
+    <main className="flex min-h-screen items-center justify-center bg-paper text-ink">
       <form onSubmit={handleSubmit} className="w-full max-w-sm px-6">
-        <h1 className="font-display text-3xl text-paper">Artist login</h1>
+        <h1 className="font-display text-3xl text-ink">Artist login</h1>
 
         <div className="mt-6 flex flex-col gap-4">
-          <div>
-            <label className="text-xs text-paper/50">Email</label>
+          <Field label="Email">
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none focus:border-ink-red"
+              className={inputClass()}
             />
-          </div>
-          <div>
-            <label className="text-xs text-paper/50">Password</label>
+          </Field>
+          <Field label="Password">
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="mt-1 w-full rounded-sm border border-paper/10 bg-white/[0.02] px-4 py-3 text-sm text-paper outline-none focus:border-ink-red"
+              className={inputClass()}
             />
-          </div>
+          </Field>
 
           {error && (
-            <p className="rounded-sm border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-paper">
+            <p className="rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">
               {error}
             </p>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-sm bg-ink-red py-3 text-sm font-medium text-paper disabled:opacity-40"
-          >
+          <PrimaryButton type="submit" full disabled={submitting}>
             {submitting ? "Logging in…" : "Log in"}
-          </button>
+          </PrimaryButton>
         </div>
 
-        <p className="mt-6 text-center text-sm text-paper/50">
+        <p className="mt-6 text-center text-sm text-grey">
           Don't have an account?{" "}
-          <a href="/signup" className="text-paper underline">
+          <a href="/signup" className="text-ink underline">
             Sign up
           </a>
         </p>

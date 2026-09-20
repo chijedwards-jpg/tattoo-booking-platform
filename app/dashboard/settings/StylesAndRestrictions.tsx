@@ -1,13 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import type { TattooStyle, ArtistRestriction, RestrictionType } from "@prisma/client";
 import { PLACEMENTS } from "@/lib/placements";
 import { VALID_STYLES } from "@/lib/aiAnalysis";
-
-function inputClass() {
-  return "rounded-sm border border-paper/10 bg-white/[0.02] px-3 py-2 text-sm text-paper outline-none focus:border-ink-red";
-}
+import { Card, Field, PrimaryButton, inputClass } from "../../ui";
 
 // ---------------------------------------------------------------------------
 // Tattoo styles
@@ -46,7 +44,7 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
   }
 
   return (
-    <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-5">
+    <Card>
       <div className="flex flex-col gap-2">
         {rows.map((style) => (
           <StyleRow
@@ -56,44 +54,40 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
             onDeleted={(id) => setRows((r) => r.filter((s) => s.id !== id))}
           />
         ))}
-        {rows.length === 0 && (
-          <p className="text-sm text-paper/40">No styles configured yet.</p>
-        )}
+        {rows.length === 0 && <p className="text-sm text-grey">No styles configured yet.</p>}
       </div>
 
-      <form onSubmit={addStyle} className="mt-4 flex items-end gap-2 border-t border-paper/10 pt-4">
+      <form onSubmit={addStyle} className="mt-4 flex items-end gap-2 border-t border-line pt-4">
         <div className="flex-1">
-          <label className="text-xs text-paper/50">Style name</label>
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="e.g. Watercolor"
-            className={`mt-1 w-full ${inputClass()}`}
-            required
-          />
+          <Field label="Style name">
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g. Watercolor"
+              className={inputClass()}
+              required
+            />
+          </Field>
         </div>
         <div className="w-28">
-          <label className="text-xs text-paper/50">Time ×</label>
-          <input
-            type="number"
-            step="0.1"
-            min="0.1"
-            value={newMultiplier}
-            onChange={(e) => setNewMultiplier(e.target.value)}
-            className={`mt-1 w-full ${inputClass()}`}
-            required
-          />
+          <Field label="Time ×">
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              value={newMultiplier}
+              onChange={(e) => setNewMultiplier(e.target.value)}
+              className={inputClass()}
+              required
+            />
+          </Field>
         </div>
-        <button
-          type="submit"
-          disabled={adding}
-          className="rounded-sm bg-ink-red px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
-        >
+        <PrimaryButton type="submit" disabled={adding}>
           Add
-        </button>
+        </PrimaryButton>
       </form>
       {addError && <p className="mt-2 text-xs text-ink-red">{addError}</p>}
-    </div>
+    </Card>
   );
 }
 
@@ -161,12 +155,12 @@ function StyleRow({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 rounded-lg bg-paper p-2.5">
       <div className="flex items-center gap-2">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className={`w-40 ${inputClass()} ${!style.active ? "opacity-40" : ""}`}
+          className={`w-40 !mt-0 ${inputClass()} ${!style.active ? "opacity-40" : ""}`}
         />
         <input
           type="number"
@@ -174,26 +168,23 @@ function StyleRow({
           min="0.1"
           value={timeMultiplier}
           onChange={(e) => setTimeMultiplier(e.target.value)}
-          className={`w-20 ${inputClass()} ${!style.active ? "opacity-40" : ""}`}
+          className={`w-20 !mt-0 ${inputClass()} ${!style.active ? "opacity-40" : ""}`}
         />
         {dirty && (
           <button
             onClick={save}
             disabled={saving}
-            className="rounded-sm border border-ink-red/60 px-3 py-2 text-xs text-paper disabled:opacity-40"
+            className="rounded-full border border-ink-red/60 px-3 py-2 text-xs text-ink disabled:opacity-40"
           >
             Save
           </button>
         )}
-        <label className="ml-2 flex items-center gap-1.5 text-xs text-paper/60">
+        <label className="ml-2 flex items-center gap-1.5 text-xs text-grey">
           <input type="checkbox" checked={style.active} onChange={toggleActive} />
           Active
         </label>
-        <button
-          onClick={remove}
-          className="ml-auto text-xs text-paper/40 hover:text-ink-red"
-        >
-          Remove
+        <button onClick={remove} className="ml-auto text-grey hover:text-ink-red">
+          <Trash2 size={15} />
         </button>
       </div>
       {error && <p className="text-xs text-ink-red">{error}</p>}
@@ -269,79 +260,68 @@ export function RestrictionsForm({ restrictions }: { restrictions: ArtistRestric
   }
 
   return (
-    <div className="rounded-sm border border-paper/10 bg-white/[0.02] p-5">
+    <Card>
       <div className="flex flex-col gap-2">
         {rows.map((r) => (
           <div key={r.id} className="flex items-center gap-3 text-sm">
-            <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs text-paper/60">
+            <span className="rounded-full bg-paper px-2 py-0.5 font-mono text-[11px] uppercase tracking-wide text-grey">
               {TYPE_LABEL[r.type]}
             </span>
-            <span className="text-paper">{r.value}</span>
+            <span className="text-ink">{r.value}</span>
             {!ENFORCED_TYPES.includes(r.type) && (
-              <span className="text-xs text-paper/30">(not auto-enforced yet)</span>
+              <span className="text-xs text-grey">(not auto-enforced yet)</span>
             )}
-            <button
-              onClick={() => remove(r.id)}
-              className="ml-auto text-xs text-paper/40 hover:text-ink-red"
-            >
-              Remove
+            <button onClick={() => remove(r.id)} className="ml-auto text-grey hover:text-ink-red">
+              <Trash2 size={15} />
             </button>
           </div>
         ))}
-        {rows.length === 0 && (
-          <p className="text-sm text-paper/40">No restrictions configured.</p>
-        )}
+        {rows.length === 0 && <p className="text-sm text-grey">No restrictions configured.</p>}
       </div>
 
-      <form onSubmit={addRestriction} className="mt-4 flex items-end gap-2 border-t border-paper/10 pt-4">
+      <form onSubmit={addRestriction} className="mt-4 flex items-end gap-2 border-t border-line pt-4">
         <div>
-          <label className="text-xs text-paper/50">Type</label>
-          <select
-            value={type}
-            onChange={(e) => handleTypeChange(e.target.value as RestrictionType)}
-            className={`mt-1 ${inputClass()}`}
-          >
-            {(Object.keys(TYPE_LABEL) as RestrictionType[]).map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABEL[t]}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex-1">
-          <label className="text-xs text-paper/50">Value</label>
-          {usesDropdown ? (
+          <Field label="Type">
             <select
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className={`mt-1 w-full ${inputClass()}`}
+              value={type}
+              onChange={(e) => handleTypeChange(e.target.value as RestrictionType)}
+              className={inputClass()}
             >
-              {options.map((o) => (
-                <option key={o} value={o}>
-                  {o}
+              {(Object.keys(TYPE_LABEL) as RestrictionType[]).map((t) => (
+                <option key={t} value={t}>
+                  {TYPE_LABEL[t]}
                 </option>
               ))}
             </select>
-          ) : (
-            <input
-              value={customValue}
-              onChange={(e) => setCustomValue(e.target.value)}
-              placeholder="e.g. coverups"
-              className={`mt-1 w-full ${inputClass()}`}
-            />
-          )}
+          </Field>
         </div>
 
-        <button
-          type="submit"
-          disabled={adding}
-          className="rounded-sm bg-ink-red px-4 py-2 text-sm font-medium text-paper disabled:opacity-40"
-        >
+        <div className="flex-1">
+          <Field label="Value">
+            {usesDropdown ? (
+              <select value={value} onChange={(e) => setValue(e.target.value)} className={inputClass()}>
+                {options.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                value={customValue}
+                onChange={(e) => setCustomValue(e.target.value)}
+                placeholder="e.g. coverups"
+                className={inputClass()}
+              />
+            )}
+          </Field>
+        </div>
+
+        <PrimaryButton type="submit" disabled={adding}>
           Add
-        </button>
+        </PrimaryButton>
       </form>
       {addError && <p className="mt-2 text-xs text-ink-red">{addError}</p>}
-    </div>
+    </Card>
   );
 }
