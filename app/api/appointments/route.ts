@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { BOOKABLE_STATUSES } from "@/lib/bookingStatus";
 import { calculateDeposit } from "@/lib/pricingEngine";
+import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
 
 const BookingSchema = z.object({
   submissionId: z.string(),
@@ -73,6 +74,19 @@ export async function POST(req: NextRequest) {
   if (conflict) {
     return NextResponse.json(
       { error: "That time was just booked by someone else. Please pick another." },
+      { status: 409 }
+    );
+  }
+
+  // Same race-condition guard against the artist's Google Calendar — an
+  // event created there between the client viewing slots and clicking book
+  // shouldn't be silently double-booked. fetchGoogleBusyIntervals fails
+  // open to [] (not connected, API error), so this is purely additive.
+  const googleBusy = await fetchGoogleBusyIntervals(submission.artistId, startTime, endTime);
+  const googleConflict = googleBusy.some((b) => startTime < b.end && endTime > b.start);
+  if (googleConflict) {
+    return NextResponse.json(
+      { error: "That time is no longer available. Please pick another." },
       { status: 409 }
     );
   }

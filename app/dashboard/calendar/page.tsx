@@ -2,7 +2,9 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { googleCalendarEmbedUrl } from "@/lib/googleCalendar";
-import GoogleCalendarConnect from "./GoogleCalendarConnect";
+import { isGoogleOAuthConfigured } from "@/lib/googleOAuth";
+import GoogleCalendarEmbedConnect from "./GoogleCalendarEmbedConnect";
+import GoogleBusyBlockConnect from "./GoogleBusyBlockConnect";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +19,17 @@ function fmtTime(d: Date) {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
-export default async function CalendarPage() {
+export default async function CalendarPage({
+  searchParams,
+}: {
+  searchParams: { google?: string };
+}) {
   const artistId = await getSessionArtistId();
   if (!artistId) redirect("/login");
 
   const artist = await prisma.artist.findUnique({
     where: { id: artistId },
-    select: { googleCalendarId: true },
+    select: { googleCalendarId: true, googleCalendarConnection: { select: { id: true } } },
   });
   if (!artist) redirect("/login");
 
@@ -58,16 +64,42 @@ export default async function CalendarPage() {
     <div>
       <h1 className="font-display text-3xl text-ink">Calendar</h1>
 
-      {/* --- The artist's own Google Calendar, embedded read-only --- */}
+      {searchParams.google === "connected" && (
+        <p className="mt-4 rounded-xl border border-pine/40 bg-pine/10 px-4 py-3 text-sm text-ink">
+          Google Calendar connected — your busy times will now be kept off your bookable slots.
+        </p>
+      )}
+      {searchParams.google === "error" && (
+        <p className="mt-4 rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">
+          Couldn't connect your Google Calendar. Please try again.
+        </p>
+      )}
+
+      {/* --- Block busy times: real OAuth access, affects bookable slots --- */}
       <section className="mt-6">
-        <h2 className="font-display text-xl text-ink">Your Google Calendar</h2>
+        <h2 className="font-display text-xl text-ink">Block your busy times</h2>
+        <p className="mt-1 text-sm text-grey">
+          Connect your Google Calendar so clients can't book over things
+          already on it — a dentist appointment, vacation, anything. This
+          only ever reads free/busy status, never event details, and it's
+          separate from the calendar display below.
+        </p>
+        <GoogleBusyBlockConnect
+          connected={Boolean(artist.googleCalendarConnection)}
+          configured={isGoogleOAuthConfigured()}
+        />
+      </section>
+
+      {/* --- The artist's own Google Calendar, embedded read-only --- */}
+      <section className="mt-10">
+        <h2 className="font-display text-xl text-ink">Show your Google Calendar</h2>
         <p className="mt-1 text-sm text-grey">
           {artist.googleCalendarId
-            ? "Read-only view of your own calendar. It doesn't affect which times clients can book."
-            : "Optional — link your Google Calendar to see it alongside your bookings."}
+            ? "Read-only view of your own calendar. It doesn't affect which times clients can book — use \"Block your busy times\" above for that."
+            : "Optional — paste a public calendar link to see it alongside your bookings below."}
         </p>
 
-        <GoogleCalendarConnect connectedId={artist.googleCalendarId} />
+        <GoogleCalendarEmbedConnect connectedId={artist.googleCalendarId} />
 
         {artist.googleCalendarId && (
           <iframe

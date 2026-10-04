@@ -42,6 +42,30 @@ model Artist {
   availability  AvailabilityBlock[]
   submissions   Submission[]
   appointments  Appointment[]
+
+  // OAuth connection used to block the artist's real Google Calendar busy
+  // times from bookable slots (separate from googleCalendarId above, which
+  // is just the display embed and needs no auth).
+  googleCalendarConnection GoogleCalendarConnection?
+}
+
+// OAuth tokens for reading the artist's free/busy status via Google's
+// Calendar API (calendar.freebusy scope — busy/free only, no event
+// details). The refresh token is long-lived and grants ongoing access to
+// the artist's real calendar, so it's encrypted at rest (see lib/crypto.ts)
+// rather than stored as plain text like the rest of this schema.
+model GoogleCalendarConnection {
+  id        String @id @default(cuid())
+  artist    Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId  String @unique
+
+  calendarId            String   @default("primary")
+  encryptedRefreshToken String
+  accessToken           String?
+  accessTokenExpiresAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PricingConfig {

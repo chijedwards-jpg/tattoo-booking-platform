@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculateAvailableSlots } from "@/lib/availability";
+import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
+
+const SLOT_SEARCH_DAYS_AHEAD = 14; // must match calculateAvailableSlots' own default
 
 export async function GET(req: NextRequest) {
   const submissionId = req.nextUrl.searchParams.get("submissionId");
@@ -39,9 +42,22 @@ export async function GET(req: NextRequest) {
     where: { artistId: submission.artistId, status: "SCHEDULED" },
   });
 
+  // Also fold in the artist's real Google Calendar busy times, if they've
+  // connected one — a personal dentist appointment shouldn't be offered to
+  // a client as a bookable slot. Fails open to [] on any error (not
+  // connected, revoked access, Google API hiccup) rather than breaking
+  // availability entirely; see fetchGoogleBusyIntervals.
+  const now = new Date();
+  const searchEnd = new Date(now);
+  searchEnd.setDate(searchEnd.getDate() + SLOT_SEARCH_DAYS_AHEAD);
+  const googleBusy = await fetchGoogleBusyIntervals(submission.artistId, now, searchEnd);
+
   const slots = calculateAvailableSlots({
     weeklyAvailability: windows,
-    busy: existingAppointments.map((a) => ({ start: a.startTime, end: a.endTime })),
+    busy: [
+      ...existingAppointments.map((a) => ({ start: a.startTime, end: a.endTime })),
+      ...googleBusy,
+    ],
     durationMins,
   });
 

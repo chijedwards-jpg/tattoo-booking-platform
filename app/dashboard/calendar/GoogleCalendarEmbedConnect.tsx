@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Link2, Unlink } from "lucide-react";
 import { Card, Field, PrimaryButton, GhostButton, inputClass } from "../../ui";
 
-export default function GoogleCalendarConnect({
+export default function GoogleCalendarEmbedConnect({
   connectedId,
 }: {
   connectedId: string | null;
