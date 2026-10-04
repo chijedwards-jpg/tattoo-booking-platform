@@ -67,6 +67,12 @@ Then open http://localhost:3000.
   payment instructions (Venmo/CashApp/PayPal/etc, set in Settings → Pricing
   & deposit). The artist marks the deposit received from the submission's
   page in the dashboard once it actually arrives.
+- Linking a Google Calendar (dashboard → Calendar) is **display only**: it
+  embeds a read-only view next to the app's own bookings. It does not sync —
+  it won't block booked times from being offered to clients, and bookings
+  made here don't appear on it. The calendar must be shared publicly in
+  Google Calendar's settings, or the embed renders blank for anyone not
+  already signed into that Google account.
 - Everything under `lib/` is plain TypeScript with no Next.js-specific
   imports, so `npx tsx lib/pricingEngine.test.ts` works standalone even
   before the rest of the app is scaffolded.

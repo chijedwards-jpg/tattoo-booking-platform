@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { googleCalendarEmbedUrl } from "@/lib/googleCalendar";
+import GoogleCalendarConnect from "./GoogleCalendarConnect";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +20,12 @@ function fmtTime(d: Date) {
 export default async function CalendarPage() {
   const artistId = await getSessionArtistId();
   if (!artistId) redirect("/login");
+
+  const artist = await prisma.artist.findUnique({
+    where: { id: artistId },
+    select: { googleCalendarId: true },
+  });
+  if (!artist) redirect("/login");
 
   const rangeStart = new Date();
   rangeStart.setHours(0, 0, 0, 0);
@@ -49,6 +57,33 @@ export default async function CalendarPage() {
   return (
     <div>
       <h1 className="font-display text-3xl text-ink">Calendar</h1>
+
+      {/* --- The artist's own Google Calendar, embedded read-only --- */}
+      <section className="mt-6">
+        <h2 className="font-display text-xl text-ink">Your Google Calendar</h2>
+        <p className="mt-1 text-sm text-grey">
+          {artist.googleCalendarId
+            ? "Read-only view of your own calendar. It doesn't affect which times clients can book."
+            : "Optional — link your Google Calendar to see it alongside your bookings."}
+        </p>
+
+        <GoogleCalendarConnect connectedId={artist.googleCalendarId} />
+
+        {artist.googleCalendarId && (
+          <iframe
+            src={googleCalendarEmbedUrl(artist.googleCalendarId)}
+            title="Your Google Calendar"
+            className="mt-4 h-[600px] w-full rounded-2xl border border-line bg-card"
+            // Not sandboxed: Google Calendar's embed needs same-origin to
+            // render, and the URL is rebuilt from a validated calendar ID
+            // (see parseGoogleCalendarId) rather than pasted input.
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        )}
+      </section>
+
+      {/* --- Bookings made through this app --- */}
+      <h2 className="mt-10 font-display text-xl text-ink">Booked through your page</h2>
       <p className="mt-1 text-sm text-grey">The next 7 days.</p>
 
       <div className="mt-4 flex items-center gap-4 text-xs text-grey">

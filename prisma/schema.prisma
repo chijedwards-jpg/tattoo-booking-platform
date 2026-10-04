@@ -23,6 +23,11 @@ model Artist {
   bio         String?
   profilePhoto String?
   location    String?
+  // Google Calendar ID (e.g. "you@gmail.com") for the read-only embed on the
+  // dashboard Calendar tab. Only the ID is stored, never a pasted URL — the
+  // embed URL is rebuilt from it so nothing user-supplied reaches an iframe
+  // src. Display only: it does not affect bookable slots.
+  googleCalendarId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
