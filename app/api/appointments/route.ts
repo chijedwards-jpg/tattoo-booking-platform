@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { BOOKABLE_STATUSES } from "@/lib/bookingStatus";
 import { calculateDeposit } from "@/lib/pricingEngine";
 import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
+import { sendBookingConfirmationEmail } from "@/lib/email";
 
 const BookingSchema = z.object({
   submissionId: z.string(),
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
 
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
-    include: { artist: { include: { bookingRules: true, pricingConfig: true } } },
+    include: { client: true, artist: { include: { bookingRules: true, pricingConfig: true } } },
   });
 
   if (!submission || !submission.artist.bookingRules || !submission.artist.pricingConfig) {
@@ -113,6 +114,20 @@ export async function POST(req: NextRequest) {
     where: { id: submission.id },
     data: { status: "BOOKED" },
   });
+
+  try {
+    await sendBookingConfirmationEmail({
+      to: submission.client.email,
+      artistName: submission.artist.name,
+      type,
+      startTime,
+      endTime,
+      depositAmount,
+      depositInstructions: submission.artist.pricingConfig.depositInstructions,
+    });
+  } catch (err) {
+    console.error("Failed to send booking confirmation email:", err);
+  }
 
   return NextResponse.json({ appointment });
 }

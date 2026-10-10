@@ -62,6 +62,14 @@ Then open http://localhost:3000.
   engine and schema work without them. You'll need the Gemini key for the
   submission intake flow, since it calls the image-analysis API route
   directly.
+- Three transactional emails exist (`lib/email.ts`), all client-facing: one
+  right after a submission is created (what to expect next, varies by
+  routing outcome), one when an artist approves a submission that needed
+  review, and one when a slot actually gets booked (with a Google Calendar
+  "add to calendar" link, and deposit instructions if it's a paid tattoo
+  appointment). Without `RESEND_API_KEY` set, each one logs a warning and
+  is skipped rather than failing the request it's attached to — a
+  submission or booking always succeeds even if email delivery doesn't.
 - Deposits aren't processed by this app — a tattoo appointment is booked
   immediately (no payment gate), and the client is shown the artist's own
   payment instructions (Venmo/CashApp/PayPal/etc, set in Settings → Pricing
@@ -82,6 +90,21 @@ Then open http://localhost:3000.
 - Everything under `lib/` is plain TypeScript with no Next.js-specific
   imports, so `npx tsx lib/pricingEngine.test.ts` works standalone even
   before the rest of the app is scaffolded.
+
+## Setting up transactional email (Resend)
+
+1. Sign up at [resend.com](https://resend.com) (free tier covers local dev
+   and small-scale use).
+2. **API Keys → Create API Key** — copy it into `.env` as `RESEND_API_KEY`.
+3. That alone is enough to send from `onboarding@resend.dev`, which works
+   as the `from` address to any recipient with no further setup — fine for
+   testing. For a real deployment, verify your own sending domain
+   (**Domains → Add Domain**, then add the DNS records Resend gives you)
+   and set `RESEND_FROM_EMAIL` to an address on it — mail from
+   `onboarding@resend.dev` is more likely to land in spam, and doesn't
+   carry your/the artist's name.
+4. Restart the dev server. No code changes needed — the three emails in
+   `lib/email.ts` start sending as soon as the key is present.
 
 ## Setting up Google Calendar busy-time blocking
 

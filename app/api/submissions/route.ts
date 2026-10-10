@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { analyzeInspirationImage } from "@/lib/aiAnalysis";
 import { calculateEstimate, decideRouting, calculateDeposit } from "@/lib/pricingEngine";
+import { sendSubmissionReceivedEmail } from "@/lib/email";
 
 const SubmissionSchema = z.object({
   artistSlug: z.string(),
@@ -152,6 +153,20 @@ export async function POST(req: NextRequest) {
       status: routing,
     },
   });
+
+  // Fire-and-forget-but-logged: a flaky email provider shouldn't turn a
+  // successful submission into a 502 for the client.
+  try {
+    await sendSubmissionReceivedEmail({
+      to: client.email,
+      artistName: artist.name,
+      status: routing,
+      priceLow: estimate.priceLow,
+      priceHigh: estimate.priceHigh,
+    });
+  } catch (err) {
+    console.error("Failed to send submission-received email:", err);
+  }
 
   return NextResponse.json({
     submissionId: submission.id,
