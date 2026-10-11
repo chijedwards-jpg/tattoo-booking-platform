@@ -96,13 +96,14 @@ Then open http://localhost:3000.
 1. Sign up at [resend.com](https://resend.com) (free tier covers local dev
    and small-scale use).
 2. **API Keys → Create API Key** — copy it into `.env` as `RESEND_API_KEY`.
-3. That alone is enough to send from `onboarding@resend.dev`, which works
-   as the `from` address to any recipient with no further setup — fine for
-   testing. For a real deployment, verify your own sending domain
+3. That alone is enough to send from `onboarding@resend.dev`, but on an
+   unverified account Resend restricts this sender to **only the email
+   address you signed up with** — any other recipient gets rejected with
+   an error. That's fine for testing against your own inbox, but real
+   clients won't receive anything until you verify a sending domain
    (**Domains → Add Domain**, then add the DNS records Resend gives you)
-   and set `RESEND_FROM_EMAIL` to an address on it — mail from
-   `onboarding@resend.dev` is more likely to land in spam, and doesn't
-   carry your/the artist's name.
+   and set `RESEND_FROM_EMAIL` to an address on it — this is required
+   before going live, not just a spam/branding nicety.
 4. Restart the dev server. No code changes needed — the three emails in
    `lib/email.ts` start sending as soon as the key is present.
 

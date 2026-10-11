@@ -8,8 +8,8 @@ const body = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Start your tattoo",
-  description: "Automated tattoo intake, estimation, and booking",
+  title: "Tattoo Booking Platform",
+  description: "Automated intake, pricing, deposits, and booking for tattoo artists and shops.",
 };
 
 export default function RootLayout({

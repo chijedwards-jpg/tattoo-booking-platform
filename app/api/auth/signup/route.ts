@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSession } from "@/lib/auth";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+
+// Unauthenticated account creation — without a limit, a script could spam
+// accounts, squat on desirable slugs, or trigger a Stripe Checkout session
+// per attempt.
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60 * 60 * 1000;
 
 const SignupSchema = z.object({
   email: z.string().email(),
@@ -14,6 +21,13 @@ const SignupSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!checkRateLimit(`signup:${getClientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json();
   const parsed = SignupSchema.safeParse(body);
 

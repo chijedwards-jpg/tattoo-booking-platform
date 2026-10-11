@@ -4,6 +4,13 @@ import { prisma } from "@/lib/db";
 import { analyzeInspirationImage } from "@/lib/aiAnalysis";
 import { calculateEstimate, decideRouting, calculateDeposit } from "@/lib/pricingEngine";
 import { sendSubmissionReceivedEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+
+// ~8MB of actual image data, base64-encoded (base64 runs ~4/3 the size of
+// the original bytes) — generous for a phone photo, but bounds how much a
+// single request can push through a billed Gemini call and into a Postgres
+// row (inspirationImages is stored as plain text, not a file upload).
+const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024 * 1.4;
 
 const SubmissionSchema = z.object({
   artistSlug: z.string(),
@@ -12,7 +19,7 @@ const SubmissionSchema = z.object({
   clientPhone: z.string().optional(),
 
   // data:image/jpeg;base64,... — sent straight from the browser's file input
-  inspirationImageDataUrl: z.string(),
+  inspirationImageDataUrl: z.string().max(MAX_BASE64_IMAGE_LENGTH, "Image is too large"),
   placement: z.string(),
   sizeInches: z.number().optional(),
   sizePreset: z.string().optional(),
@@ -20,7 +27,20 @@ const SubmissionSchema = z.object({
   description: z.string().optional(),
 });
 
+// Each submission triggers a billed Gemini call and an email send, and the
+// endpoint has no auth — without a limit, a script could run up API costs
+// and spam every artist's dashboard with fake requests.
+const RATE_LIMIT = 8;
+const RATE_WINDOW_MS = 60 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
+  if (!checkRateLimit(`submissions:${getClientIp(req)}`, RATE_LIMIT, RATE_WINDOW_MS)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json();
   const parsed = SubmissionSchema.safeParse(body);
 

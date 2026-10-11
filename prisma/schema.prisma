@@ -28,6 +28,15 @@ model Artist {
   // embed URL is rebuilt from it so nothing user-supplied reaches an iframe
   // src. Display only: it does not affect bookable slots.
   googleCalendarId String?
+
+  // Subscription billing (Stripe) — artists pay the platform monthly.
+  // stripeSubscriptionStatus mirrors Stripe's own status string verbatim
+  // ("trialing", "active", "past_due", "canceled", etc.) rather than an
+  // enum, so a new status Stripe introduces doesn't need a migration here.
+  stripeCustomerId         String? @unique
+  stripeSubscriptionId     String? @unique
+  stripeSubscriptionStatus String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

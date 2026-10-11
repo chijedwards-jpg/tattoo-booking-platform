@@ -184,7 +184,7 @@ export async function fetchGoogleBusyIntervals(
     });
 
     if (!res.ok) {
-      console.error(`Google freebusy request failed for artist ${artistId}: ${res.status}`);
+      console.error(`Google freebusy request failed for artist ${artistId}: ${res.status} ${await res.text()}`);
       return [];
     }
 

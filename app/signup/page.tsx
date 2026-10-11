@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Field, PrimaryButton, inputClass } from "../ui";
 
 export default function SignupPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [email, setEmail] = useState("");
@@ -27,8 +25,16 @@ export default function SignupPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Something went wrong.");
       }
-      router.push("/dashboard");
-      router.refresh();
+
+      // Account exists now, but isn't usable until a subscription (even a
+      // trialing one) is attached — send them straight into Stripe Checkout
+      // rather than dropping them on a dashboard they can't access yet.
+      const checkoutRes = await fetch("/api/billing/checkout", { method: "POST" });
+      const checkoutBody = await checkoutRes.json().catch(() => ({}));
+      if (!checkoutRes.ok || !checkoutBody.url) {
+        throw new Error(checkoutBody.error ?? "Could not start checkout.");
+      }
+      window.location.href = checkoutBody.url;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -92,7 +98,19 @@ export default function SignupPage() {
           </PrimaryButton>
         </div>
 
-        <p className="mt-6 text-center text-sm text-grey">
+        <p className="mt-6 text-center text-xs text-grey">
+          By creating an account, you agree to our{" "}
+          <a href="/terms" className="underline hover:text-ink">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="/privacy" className="underline hover:text-ink">
+            Privacy Policy
+          </a>
+          .
+        </p>
+
+        <p className="mt-4 text-center text-sm text-grey">
           Already have an account?{" "}
           <a href="/login" className="text-ink underline">
             Log in
