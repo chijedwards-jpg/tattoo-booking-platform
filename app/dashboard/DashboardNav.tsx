@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Users, Calendar, DollarSign, Palette, ShieldAlert, CalendarClock, Settings as SettingsIcon, CreditCard,
+  Home, Users, Calendar, DollarSign, Palette, ShieldAlert, CalendarClock, Settings as SettingsIcon, CreditCard, Images,
 } from "lucide-react";
 
 const NAV = [
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/dashboard/settings/rules", label: "Booking Rules", Icon: ShieldAlert },
   { href: "/dashboard/settings/availability", label: "Availability", Icon: CalendarClock },
   { href: "/dashboard/settings/profile", label: "Profile", Icon: SettingsIcon },
+  { href: "/dashboard/settings/portfolio", label: "Portfolio", Icon: Images },
   { href: "/dashboard/settings/billing", label: "Billing", Icon: CreditCard },
 ];
 

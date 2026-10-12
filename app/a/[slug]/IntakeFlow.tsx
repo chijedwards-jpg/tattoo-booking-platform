@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
 import { PLACEMENTS, type Placement } from "@/lib/placements";
+import { fileToDataUrl } from "@/lib/files";
 import { Badge, PrimaryButton, GhostButton, Chip, Card, StepDots } from "../../ui";
 
 const SIZE_PRESETS = [
@@ -31,10 +32,12 @@ export default function IntakeFlow({
   artistSlug,
   artistName,
   artistBio,
+  portfolioImages,
 }: {
   artistSlug: string;
   artistName: string;
   artistBio: string | null;
+  portfolioImages: string[];
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEP_KEYS[stepIndex];
@@ -119,7 +122,12 @@ export default function IntakeFlow({
 
         <div className="flex-1">
           {step === "welcome" && (
-            <WelcomeStep artistName={artistName} artistBio={artistBio} onNext={next} />
+            <WelcomeStep
+              artistName={artistName}
+              artistBio={artistBio}
+              portfolioImages={portfolioImages}
+              onNext={next}
+            />
           )}
 
           {step === "upload" && (
@@ -186,10 +194,12 @@ export default function IntakeFlow({
 function WelcomeStep({
   artistName,
   artistBio,
+  portfolioImages,
   onNext,
 }: {
   artistName: string;
   artistBio: string | null;
+  portfolioImages: string[];
   onNext: () => void;
 }) {
   const initials = artistName
@@ -206,6 +216,16 @@ function WelcomeStep({
       </div>
       <h1 className="font-display text-3xl leading-tight text-ink">{artistName}</h1>
       {artistBio && <p className="mt-4 text-[15px] leading-relaxed text-ink/80">{artistBio}</p>}
+
+      {portfolioImages.length > 0 && (
+        <div className="mt-6 grid grid-cols-3 gap-2 text-left">
+          {portfolioImages.map((src, i) => (
+            <div key={i} className="aspect-square overflow-hidden rounded-xl border border-line">
+              <img src={src} alt="" className="h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-8">
         <PrimaryButton full onClick={onNext}>
@@ -625,15 +645,6 @@ function ConsultationBookingStep({
       <SlotBooker submissionId={submissionId} type="CONSULTATION" onBooked={setBooked} />
     </div>
   );
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
 
 // ---------------------------------------------------------------------------

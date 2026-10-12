@@ -27,7 +27,11 @@ export default async function ArtistIntakePage({
 }) {
   const artist = await prisma.artist.findUnique({
     where: { slug: params.slug },
-    include: { pricingConfig: true, bookingRules: true },
+    include: {
+      pricingConfig: true,
+      bookingRules: true,
+      portfolioImages: { orderBy: { createdAt: "desc" } },
+    },
   });
 
   // Not fully configured (no pricing/booking rules) means submissions would
@@ -37,5 +41,12 @@ export default async function ArtistIntakePage({
     notFound();
   }
 
-  return <IntakeFlow artistSlug={artist.slug} artistName={artist.name} artistBio={artist.bio} />;
+  return (
+    <IntakeFlow
+      artistSlug={artist.slug}
+      artistName={artist.name}
+      artistBio={artist.bio}
+      portfolioImages={artist.portfolioImages.map((i) => i.imageDataUrl)}
+    />
+  );
 }

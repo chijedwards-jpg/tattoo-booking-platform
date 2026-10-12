@@ -46,12 +46,28 @@ model Artist {
   availability  AvailabilityBlock[]
   submissions   Submission[]
   appointments  Appointment[]
+  portfolioImages PortfolioImage[]
 
   // OAuth connection to the artist's real Google Calendar — the single
   // calendar integration: blocks busy times from bookable slots, pushes
   // real bookings there as events, and is the calendar embedded on the
   // dashboard. There's no separate app-only calendar.
   googleCalendarConnection GoogleCalendarConnection?
+}
+
+// Past-work images an artist shows off on their public booking page —
+// purely their own content, nothing else references it, so it's fine to
+// cascade-delete along with the artist (unlike the rest of this schema,
+// which defaults to RESTRICT to force explicit cleanup of real business
+// records).
+model PortfolioImage {
+  id           String   @id @default(cuid())
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId     String
+
+  imageDataUrl String   // data:image/...;base64,... — same pattern as Submission.inspirationImages
+  caption      String?
+  createdAt    DateTime @default(now())
 }
 
 // OAuth tokens for the artist's Google Calendar (calendar.freebusy +
