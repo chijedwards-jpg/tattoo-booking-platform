@@ -6,6 +6,7 @@ import { ChevronLeft } from "lucide-react";
 import { Card } from "../../../ui";
 import ReviewActions from "./ReviewActions";
 import DepositStatus from "./DepositStatus";
+import DeleteSubmissionButton from "./DeleteSubmissionButton";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,8 @@ export default async function SubmissionDetailPage({
           artistNotes={submission.artistNotes}
         />
       )}
+
+      <DeleteSubmissionButton submissionId={submission.id} />
     </div>
   );
 }

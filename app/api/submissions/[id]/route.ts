@@ -93,3 +93,41 @@ export async function GET(
 
   return NextResponse.json({ submission });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const artistId = await getSessionArtistId();
+  if (!artistId) {
+    return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  }
+
+  const existing = await prisma.submission.findUnique({
+    where: { id: params.id },
+    include: { appointment: true },
+  });
+  if (!existing || existing.artistId !== artistId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // A booked appointment references this submission (RESTRICT, not cascade)
+  // — require canceling it first rather than silently deleting a real
+  // booking (and its Google Calendar event, deposit record, etc.) as a side
+  // effect of what looks like a simple "delete this submission" click. A
+  // *cancelled* appointment has nothing left to lose (slot already freed,
+  // Google event already removed at cancel time) — clear that leftover row
+  // ourselves so it doesn't block deletion on a technicality.
+  if (existing.appointment) {
+    if (existing.appointment.status === "SCHEDULED") {
+      return NextResponse.json(
+        { error: "Cancel the appointment before deleting this submission." },
+        { status: 409 }
+      );
+    }
+    await prisma.appointment.delete({ where: { id: existing.appointment.id } });
+  }
+
+  await prisma.submission.delete({ where: { id: params.id } });
+  return NextResponse.json({ ok: true });
+}
