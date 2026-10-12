@@ -35,6 +35,12 @@ export interface PriceEstimate {
   styleMultiplierUsed: number;
 }
 
+// No real tattoo session is shorter than this — without a floor, a very
+// low hours read (a poor-quality reference image, an odd analysis result)
+// can round down to an appointment with zero or near-zero duration, which
+// is nonsensical to book, display on a calendar, or push to Google Calendar.
+const MIN_SESSION_HOURS = 0.5;
+
 /**
  * Core calculation: estimated hours x hourly rate, adjusted by style
  * multiplier, floored by minimum price, expressed as a range.
@@ -49,7 +55,7 @@ export function calculateEstimate(
   );
   const styleMultiplierUsed = styleConfig?.timeMultiplier ?? 1.0;
 
-  const adjustedHours = round2(ai.estimatedHours * styleMultiplierUsed);
+  const adjustedHours = Math.max(MIN_SESSION_HOURS, round2(ai.estimatedHours * styleMultiplierUsed));
   const basePrice = round2(adjustedHours * pricing.hourlyRate);
 
   let centerPrice = basePrice;

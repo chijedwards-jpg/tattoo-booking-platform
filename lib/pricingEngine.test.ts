@@ -27,6 +27,15 @@ assert(est2.basePrice < 150, 'base price under minimum before floor applied');
 assert(est2.appliedMinimum === true, 'minimum applied');
 assert(est2.priceLow === 150, `priceLow floors at minimum, got ${est2.priceLow}`);
 
+// --- Pricing: hours floor — a near-zero AI read should never produce a
+// --- near-zero-duration appointment ---
+const est3 = calculateEstimate(
+  { detectedStyle: 'Other', estimatedHours: 0.02, complexity: 1, confidence: 0.1, colorVsBW: 'black_grey' },
+  { hourlyRate: 200, minimumPrice: 100, rangeSpreadPct: 0.15 },
+  []
+);
+assert(est3.adjustedHours === 0.5, `adjustedHours floors at 0.5, got ${est3.adjustedHours}`);
+
 // --- Routing: clean GREEN case ---
 const rules = {
   maxAutoBookDurationMins: 180,
