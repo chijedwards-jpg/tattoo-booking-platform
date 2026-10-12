@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
   }
   const [, mimeType, base64Data] = match;
 
-  // --- Run AI analysis ------------------------------------------------------
+  // --- Run image analysis ------------------------------------------------------
 
   let aiResult;
   try {
@@ -98,9 +98,9 @@ export async function POST(req: NextRequest) {
       sizeInches: input.sizeInches,
     });
   } catch (err) {
-    console.error("AI analysis failed:", err);
+    console.error("Image analysis failed:", err);
     return NextResponse.json(
-      { error: "AI analysis failed. Please try again." },
+      { error: "Couldn't analyze your image. Please try again." },
       { status: 502 }
     );
   }

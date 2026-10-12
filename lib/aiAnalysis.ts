@@ -13,6 +13,18 @@ interface AnalyzeImageParams {
   sizeInches?: number;
 }
 
+// Gemini occasionally returns a transient 503 ("experiencing high demand")
+// or 429 (rate limited) — worth one quiet retry before surfacing a failure
+// to the client, since the alternative is making them redo the whole form
+// for what's often a few-second blip on Google's end.
+const RETRYABLE_STATUS = new Set([429, 503]);
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 1500;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Sends the inspiration image to Gemini for a structured read on style,
  * complexity, and a rough tattoo-time estimate. This estimate is always a
@@ -24,6 +36,32 @@ interface AnalyzeImageParams {
  * touching anything else in the app; the return shape stays the same.
  */
 export async function analyzeInspirationImage(
+  params: AnalyzeImageParams
+): Promise<AiAnalysisInput> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      return await analyzeInspirationImageOnce(params);
+    } catch (err) {
+      lastErr = err;
+      const status = err instanceof RetryableGeminiError ? err.status : null;
+      if (status === null || !RETRYABLE_STATUS.has(status) || attempt === MAX_ATTEMPTS) {
+        throw err;
+      }
+      console.warn(`Gemini request failed (${status}), retrying (attempt ${attempt}/${MAX_ATTEMPTS})…`);
+      await sleep(RETRY_DELAY_MS * attempt);
+    }
+  }
+  throw lastErr;
+}
+
+class RetryableGeminiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+  }
+}
+
+async function analyzeInspirationImageOnce(
   params: AnalyzeImageParams
 ): Promise<AiAnalysisInput> {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -77,7 +115,10 @@ Analyze the image and respond with ONLY a JSON object (no markdown, no prose, no
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    throw new RetryableGeminiError(
+      response.status,
+      `Gemini API error (${response.status}): ${errText}`
+    );
   }
 
   const data = await response.json();
