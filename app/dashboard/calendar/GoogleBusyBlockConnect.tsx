@@ -56,7 +56,7 @@ export default function GoogleBusyBlockConnect({
     <div className="mt-4">
       <a
         href="/api/auth/google-calendar/connect"
-        className="inline-flex items-center justify-center gap-2 rounded-full border border-ink px-4 py-2.5 text-sm text-ink transition-colors hover:bg-ink/5"
+        className="inline-flex items-center justify-center gap-2 rounded-full bg-ink-red px-5 py-3 text-sm font-medium text-paper transition-opacity hover:opacity-90"
       >
         <ShieldCheck size={14} /> Connect Google Calendar
       </a>

@@ -23,11 +23,6 @@ model Artist {
   bio         String?
   profilePhoto String?
   location    String?
-  // Google Calendar ID (e.g. "you@gmail.com") for the read-only embed on the
-  // dashboard Calendar tab. Only the ID is stored, never a pasted URL — the
-  // embed URL is rebuilt from it so nothing user-supplied reaches an iframe
-  // src. Display only: it does not affect bookable slots.
-  googleCalendarId String?
 
   // Subscription billing (Stripe) — artists pay the platform monthly.
   // stripeSubscriptionStatus mirrors Stripe's own status string verbatim
@@ -52,23 +47,29 @@ model Artist {
   submissions   Submission[]
   appointments  Appointment[]
 
-  // OAuth connection used to block the artist's real Google Calendar busy
-  // times from bookable slots (separate from googleCalendarId above, which
-  // is just the display embed and needs no auth).
+  // OAuth connection to the artist's real Google Calendar — the single
+  // calendar integration: blocks busy times from bookable slots, pushes
+  // real bookings there as events, and is the calendar embedded on the
+  // dashboard. There's no separate app-only calendar.
   googleCalendarConnection GoogleCalendarConnection?
 }
 
-// OAuth tokens for reading the artist's free/busy status via Google's
-// Calendar API (calendar.freebusy scope — busy/free only, no event
-// details). The refresh token is long-lived and grants ongoing access to
-// the artist's real calendar, so it's encrypted at rest (see lib/crypto.ts)
-// rather than stored as plain text like the rest of this schema.
+// OAuth tokens for the artist's Google Calendar (calendar.freebusy +
+// calendar.events scopes — reads busy/free and creates/deletes events this
+// app creates, but never reads other event details). The refresh token is
+// long-lived and grants ongoing access to the artist's real calendar, so
+// it's encrypted at rest (see lib/crypto.ts) rather than stored as plain
+// text like the rest of this schema.
 model GoogleCalendarConnection {
   id        String @id @default(cuid())
   artist    Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
   artistId  String @unique
 
-  calendarId            String   @default("primary")
+  // The artist's real calendar ID (their email, for the primary calendar) —
+  // resolved from Google at connect time, not the literal string "primary",
+  // since the embed iframe needs the real ID and this way one value serves
+  // both the API calls and the embed.
+  calendarId            String
   encryptedRefreshToken String
   accessToken           String?
   accessTokenExpiresAt  DateTime?
@@ -268,6 +269,12 @@ model Appointment {
 
   status        AppointmentStatus @default(SCHEDULED)
   createdAt     DateTime @default(now())
+
+  // The event this appointment was pushed to on the artist's real Google
+  // Calendar, if they're connected — null if never pushed (not connected,
+  // or the push failed; booking itself never blocks on this). Needed to
+  // delete the matching event again on cancellation.
+  googleEventId String?
 }
 
 enum AppointmentType {

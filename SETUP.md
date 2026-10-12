@@ -75,18 +75,17 @@ Then open http://localhost:3000.
   payment instructions (Venmo/CashApp/PayPal/etc, set in Settings → Pricing
   & deposit). The artist marks the deposit received from the submission's
   page in the dashboard once it actually arrives.
-- The dashboard Calendar tab has two independent Google Calendar features:
-  - **"Show your Google Calendar"** — display only, no auth. The artist
-    pastes a calendar ID/URL/embed snippet and it renders read-only next to
-    the app's own bookings. Doesn't affect booking in any way, and the
-    calendar must be shared publicly in Google's settings or the embed
-    renders blank.
-  - **"Block your busy times"** — real OAuth (`GOOGLE_CLIENT_ID` /
-    `GOOGLE_CLIENT_SECRET` below), reads free/busy status only (never event
-    details) via Google's Calendar API, and keeps those times off the
-    slots offered to clients. This is what actually prevents double-booking
-    against the artist's personal calendar; the embed above does not. Stays
-    hidden in the UI until the OAuth env vars are set.
+- The app has no calendar of its own — the dashboard Calendar tab is a
+  single Google Calendar integration (real OAuth, `GOOGLE_CLIENT_ID` /
+  `GOOGLE_CLIENT_SECRET` below). Once connected: busy times on the artist's
+  real calendar are kept off the slots offered to clients, every booking
+  made through the page is pushed there as a real event, and that same
+  calendar is embedded on the dashboard as the only schedule view. The
+  embed also needs the calendar shared publicly in Google's own settings
+  (Settings → your calendar → Access permissions), separately from the
+  OAuth connection — that's a Google-side privacy setting we can't set on
+  the artist's behalf. Stays hidden in the UI until the OAuth env vars are
+  set.
 - Everything under `lib/` is plain TypeScript with no Next.js-specific
   imports, so `npx tsx lib/pricingEngine.test.ts` works standalone even
   before the rest of the app is scaffolded.
@@ -107,11 +106,10 @@ Then open http://localhost:3000.
 4. Restart the dev server. No code changes needed — the three emails in
    `lib/email.ts` start sending as soon as the key is present.
 
-## Setting up Google Calendar busy-time blocking
+## Setting up Google Calendar
 
 This needs an OAuth app registered with Google — you do this once, in your
-own Google account, then put the credentials in `.env`. The "Show your
-Google Calendar" embed feature above doesn't need any of this.
+own Google account, then put the credentials in `.env`.
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) and
    create a new project (or pick an existing one).
@@ -119,10 +117,14 @@ Google Calendar" embed feature above doesn't need any of this.
    enable it.
 3. **APIs & Services → OAuth consent screen** — choose **External**, fill
    in the required fields (app name, your email). Under **Scopes**, add
-   `.../auth/calendar.freebusy`. While the app is unverified, add your own
-   Google account under **Test users** — only test users can complete the
-   OAuth flow until the app passes Google's verification review, which
-   isn't needed for personal/local use.
+   both `.../auth/calendar.freebusy` (reads busy/free, for blocking slots)
+   and `.../auth/calendar.events` (creates/deletes the events this app
+   pushes — never reads other events' details). While the app is
+   unverified, add your own Google account under **Test users** — only
+   test users can complete the OAuth flow until the app passes Google's
+   verification review, which isn't needed for personal/local use, but
+   does mean every other artist needs to be added as a test user (or the
+   app verified) before they can connect their own calendar.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID**
    — Application type **Web application**. Under **Authorized redirect
    URIs**, add:
@@ -130,8 +132,10 @@ Google Calendar" embed feature above doesn't need any of this.
    - `https://yourdomain.com/api/auth/google-calendar/callback` once deployed
 5. Copy the **Client ID** and **Client Secret** it gives you into `.env` as
    `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
-6. Restart the dev server. "Block your busy times" will appear on the
-   dashboard Calendar tab.
+6. Restart the dev server. "Connect Google Calendar" will appear on the
+   dashboard Calendar tab. Anyone who connected before this scope change
+   needs to disconnect and reconnect — their existing connection doesn't
+   have permission to create events yet.
 
 Each artist connects their own calendar independently — this is one app
 registration shared by everyone using the platform, not a per-artist setup.

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSessionArtistId } from "@/lib/auth";
-import { exchangeCodeForTokens, saveConnection } from "@/lib/googleOAuth";
+import { exchangeCodeForTokens, saveConnection, emailFromIdToken } from "@/lib/googleOAuth";
 
 const STATE_COOKIE = "google_oauth_state";
 
@@ -38,11 +38,16 @@ export async function GET(req: NextRequest) {
       // silently "succeeding" with nothing persisted.
       return redirectTo("error", req);
     }
+    const calendarId = tokens.id_token && emailFromIdToken(tokens.id_token);
+    if (!calendarId) {
+      return redirectTo("error", req);
+    }
     await saveConnection({
       artistId,
       refreshToken: tokens.refresh_token,
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in,
+      calendarId,
     });
     return redirectTo("connected", req);
   } catch (err) {

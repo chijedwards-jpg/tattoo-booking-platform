@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { BOOKABLE_STATUSES } from "@/lib/bookingStatus";
 import { calculateDeposit } from "@/lib/pricingEngine";
-import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
+import { fetchGoogleBusyIntervals, createGoogleCalendarEvent } from "@/lib/googleOAuth";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 
 const BookingSchema = z.object({
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     depositAmount = priceLow != null ? calculateDeposit(submission.artist.pricingConfig, priceLow) : null;
   }
 
-  const appointment = await prisma.appointment.create({
+  let appointment = await prisma.appointment.create({
     data: {
       artistId: submission.artistId,
       clientId: submission.clientId,
@@ -114,6 +114,24 @@ export async function POST(req: NextRequest) {
     where: { id: submission.id },
     data: { status: "BOOKED" },
   });
+
+  // Push the booking onto the artist's real Google Calendar, if connected —
+  // this is the calendar artists actually see; the app has no calendar view
+  // of its own. Fails open: a dead connection or API error shouldn't fail
+  // a booking that already succeeded.
+  try {
+    const googleEventId = await createGoogleCalendarEvent(submission.artistId, {
+      summary: `${type === "CONSULTATION" ? "Consultation" : "Tattoo appointment"} — ${submission.client.email}`,
+      description: submission.placement ? `Placement: ${submission.placement}` : undefined,
+      start: startTime,
+      end: endTime,
+    });
+    if (googleEventId) {
+      appointment = await prisma.appointment.update({ where: { id: appointment.id }, data: { googleEventId } });
+    }
+  } catch (err) {
+    console.error("Failed to push appointment to Google Calendar:", err);
+  }
 
   try {
     await sendBookingConfirmationEmail({

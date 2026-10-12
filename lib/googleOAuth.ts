@@ -2,14 +2,22 @@ import { prisma } from "./db";
 import { encrypt, decrypt } from "./crypto";
 import type { BusyInterval } from "./availability";
 
-// calendar.freebusy is the minimal scope for "is this artist busy at this
-// time" — it shows the artist a less alarming consent screen than
-// calendar.readonly (which grants event titles, attendees, locations) and
-// we genuinely never need event details, only busy/free.
-const SCOPE = "https://www.googleapis.com/auth/calendar.freebusy";
+// calendar.freebusy reads busy/free only (no event details); calendar.events
+// is scoped to creating/reading/deleting events, not broader calendar
+// management (renaming calendars, changing sharing, etc). openid + the
+// userinfo.email scope exist only so Google's token response includes an ID
+// token with the artist's email — that email IS their primary calendar's ID,
+// so this avoids a separate calendars.get call, which needs a broader
+// calendar.readonly/calendar scope neither of the above two scopes cover.
+// Together this is still deliberately narrower than calendar.readonly or
+// calendar (which would also hand us every other event's title, attendees,
+// and location).
+const SCOPE =
+  "openid email https://www.googleapis.com/auth/calendar.freebusy https://www.googleapis.com/auth/calendar.events";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const FREEBUSY_URL = "https://www.googleapis.com/calendar/v3/freeBusy";
+const CALENDAR_API_BASE = "https://www.googleapis.com/calendar/v3/calendars";
 
 function getConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -50,6 +58,7 @@ interface TokenResponse {
   expires_in: number;
   token_type: string;
   scope: string;
+  id_token?: string;
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<TokenResponse> {
@@ -69,6 +78,25 @@ export async function exchangeCodeForTokens(code: string): Promise<TokenResponse
     throw new Error(`Google token exchange failed (${res.status}): ${await res.text()}`);
   }
   return res.json();
+}
+
+/**
+ * Pulls the `email` claim out of Google's ID token (a JWT). No signature
+ * verification — this token came directly from Google's own token endpoint
+ * over HTTPS in the same request we're already trusting for the access/
+ * refresh tokens, not from a third party claiming to be Google, so there's
+ * nothing independent to verify it against here.
+ */
+export function emailFromIdToken(idToken: string): string | null {
+  try {
+    const payload = idToken.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const decoded = JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    return typeof decoded.email === "string" ? decoded.email : null;
+  } catch {
+    return null;
+  }
 }
 
 async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
@@ -125,15 +153,22 @@ export async function getValidAccessToken(artistId: string): Promise<string | nu
   }
 }
 
-/** Persists tokens from a fresh OAuth grant. */
+/**
+ * Persists tokens from a fresh OAuth grant. calendarId is the artist's real
+ * calendar ID (their email, for a normal Google account, pulled from the ID
+ * token — see emailFromIdToken) rather than the literal string "primary":
+ * the freebusy/events APIs accept either, but the public embed iframe only
+ * works with the real ID, so storing it means one value serves both and the
+ * artist never has to go find and paste it themselves.
+ */
 export async function saveConnection(params: {
   artistId: string;
   refreshToken: string;
   accessToken: string;
   expiresIn: number;
-  calendarId?: string;
+  calendarId: string;
 }) {
-  const { artistId, refreshToken, accessToken, expiresIn, calendarId = "primary" } = params;
+  const { artistId, refreshToken, accessToken, expiresIn, calendarId } = params;
   await prisma.googleCalendarConnection.upsert({
     where: { artistId },
     create: {
@@ -196,5 +231,72 @@ export async function fetchGoogleBusyIntervals(
   } catch (err) {
     console.error(`Google freebusy request errored for artist ${artistId}:`, err);
     return [];
+  }
+}
+
+/**
+ * Pushes a booked appointment onto the artist's real Google Calendar.
+ * Returns the created event's ID to store for later cancellation, or null
+ * on any failure (not connected, revoked access, API error) — booking
+ * itself must never fail because this push did.
+ */
+export async function createGoogleCalendarEvent(
+  artistId: string,
+  params: { summary: string; description?: string; start: Date; end: Date }
+): Promise<string | null> {
+  const accessToken = await getValidAccessToken(artistId);
+  if (!accessToken) return null;
+
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { artistId } });
+  if (!connection) return null;
+
+  try {
+    const res = await fetch(`${CALENDAR_API_BASE}/${encodeURIComponent(connection.calendarId)}/events`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        summary: params.summary,
+        description: params.description,
+        start: { dateTime: params.start.toISOString() },
+        end: { dateTime: params.end.toISOString() },
+      }),
+    });
+
+    if (!res.ok) {
+      console.error(`Google event create failed for artist ${artistId}: ${res.status} ${await res.text()}`);
+      return null;
+    }
+
+    const data = await res.json();
+    return data.id ?? null;
+  } catch (err) {
+    console.error(`Google event create errored for artist ${artistId}:`, err);
+    return null;
+  }
+}
+
+/** Best-effort delete of a previously pushed event — never throws. */
+export async function deleteGoogleCalendarEvent(artistId: string, eventId: string): Promise<void> {
+  const accessToken = await getValidAccessToken(artistId);
+  if (!accessToken) return;
+
+  const connection = await prisma.googleCalendarConnection.findUnique({ where: { artistId } });
+  if (!connection) return;
+
+  try {
+    const res = await fetch(
+      `${CALENDAR_API_BASE}/${encodeURIComponent(connection.calendarId)}/events/${encodeURIComponent(eventId)}`,
+      { method: "DELETE", headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    // 404/410 just means it's already gone (e.g. the artist deleted it
+    // themselves on Google's side) — not worth logging as an error.
+    if (!res.ok && res.status !== 404 && res.status !== 410) {
+      console.error(`Google event delete failed for artist ${artistId}: ${res.status} ${await res.text()}`);
+    }
+  } catch (err) {
+    console.error(`Google event delete errored for artist ${artistId}:`, err);
   }
 }

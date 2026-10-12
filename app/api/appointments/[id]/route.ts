@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
+import { deleteGoogleCalendarEvent } from "@/lib/googleOAuth";
 
 const UpdateSchema = z.object({
   action: z.enum(["MARK_DEPOSIT_RECEIVED", "CANCEL"]),
@@ -41,6 +42,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     where: { id: params.id },
     data: { status: "CANCELLED" },
   });
+
+  if (appointment.googleEventId) {
+    await deleteGoogleCalendarEvent(appointment.artistId, appointment.googleEventId);
+  }
 
   if (appointment.submissionId) {
     await prisma.submission.update({
