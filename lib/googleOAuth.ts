@@ -14,7 +14,7 @@ const FREEBUSY_URL = "https://www.googleapis.com/calendar/v3/freeBusy";
 function getConfig() {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET are not set in .env");
   }

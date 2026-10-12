@@ -24,7 +24,7 @@ export async function createSubscriptionCheckoutSession(params: {
   email: string;
   stripeCustomerId: string | null;
 }): Promise<string> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const priceId = process.env.STRIPE_PRICE_ID;
   if (!priceId) throw new Error("STRIPE_PRICE_ID is not set in .env");
 
@@ -47,7 +47,7 @@ export async function createSubscriptionCheckoutSession(params: {
 }
 
 export async function createBillingPortalSession(stripeCustomerId: string): Promise<string> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const session = await getStripe().billingPortal.sessions.create({
     customer: stripeCustomerId,
     return_url: `${appUrl}/dashboard/settings/billing`,

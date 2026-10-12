@@ -55,7 +55,7 @@ export async function PATCH(
     const priceLow = submission.artistOverridePriceLow ?? submission.estimatedPriceLow;
     const priceHigh = submission.artistOverridePriceHigh ?? submission.estimatedPriceHigh;
     if (priceLow != null && priceHigh != null) {
-      const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/book/${submission.id}`;
+      const bookingUrl = `${process.env.APP_URL ?? "http://localhost:3000"}/book/${submission.id}`;
       try {
         await sendApprovalEmail({
           to: submission.client.email,

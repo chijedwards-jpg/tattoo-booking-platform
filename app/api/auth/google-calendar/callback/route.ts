@@ -6,7 +6,7 @@ import { exchangeCodeForTokens, saveConnection } from "@/lib/googleOAuth";
 const STATE_COOKIE = "google_oauth_state";
 
 function redirectTo(status: "connected" | "error", req: NextRequest) {
-  const url = new URL("/dashboard/calendar", process.env.NEXT_PUBLIC_APP_URL ?? req.url);
+  const url = new URL("/dashboard/calendar", process.env.APP_URL ?? req.url);
   url.searchParams.set("google", status);
   return NextResponse.redirect(url);
 }
@@ -14,7 +14,7 @@ function redirectTo(status: "connected" | "error", req: NextRequest) {
 export async function GET(req: NextRequest) {
   const artistId = await getSessionArtistId();
   if (!artistId) {
-    return NextResponse.redirect(new URL("/login", process.env.NEXT_PUBLIC_APP_URL ?? req.url));
+    return NextResponse.redirect(new URL("/login", process.env.APP_URL ?? req.url));
   }
 
   const cookieStore = await cookies();
