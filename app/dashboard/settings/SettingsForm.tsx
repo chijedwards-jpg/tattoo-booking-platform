@@ -290,7 +290,7 @@ export function BookingRulesForm({ bookingRules }: { bookingRules: BookingRules 
             />
           </Field>
 
-          <Field label="Min AI confidence to auto-book (%)">
+          <Field label="Min confidence to auto-book (%)">
             <input
               type="number"
               min="0"

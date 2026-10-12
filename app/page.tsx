@@ -3,7 +3,7 @@ import { Sparkles, CalendarClock, Wallet, Globe } from "lucide-react";
 const FEATURES = [
   {
     Icon: Sparkles,
-    title: "AI-estimated pricing",
+    title: "Instant pricing estimates",
     body: "Clients submit a photo and description; you get an instant price range and a GREEN/YELLOW/RED routing decision — auto-bookable, needs your review, or needs a consult.",
   },
   {
@@ -107,7 +107,7 @@ export default function LandingPage() {
           <p className="mt-1 text-sm text-grey">14-day free trial, then billed monthly.</p>
           <ul className="mt-5 space-y-2 text-left text-sm text-ink">
             <li>— Your own public booking page</li>
-            <li>— AI pricing estimates & routing</li>
+            <li>— Instant pricing estimates & routing</li>
             <li>— Google Calendar busy-time sync</li>
             <li>— Email notifications for you and clients</li>
             <li>— Cancel anytime from your dashboard</li>

@@ -33,7 +33,8 @@ export default function PrivacyPage() {
             <p className="mt-1">
               Email address, tattoo description and placement, reference photos, and the
               appointment time you book. Reference photos and descriptions are sent to a
-              third-party AI model to generate a price estimate — see Section 3.
+              third-party automated image-analysis service to generate a price estimate — see
+              Section 3.
             </p>
           </section>
 
@@ -63,8 +64,8 @@ export default function PrivacyPage() {
               <li>
                 <span className="font-medium">Google</span> — if an Artist connects their
                 calendar, we read free/busy status only (never event details) to block booked
-                times. A tattoo request's reference photo and description are also sent to
-                Google's Gemini AI model to generate a price estimate.
+                times. A tattoo request's reference photo and description are also sent to an
+                automated image-analysis service to generate a price estimate.
               </li>
               <li>
                 <span className="font-medium">Resend</span> — sends transactional emails

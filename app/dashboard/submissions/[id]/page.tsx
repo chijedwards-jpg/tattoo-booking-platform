@@ -51,9 +51,9 @@ export default async function SubmissionDetailPage({
         <Field label="Size" value={submission.sizePreset ?? `${submission.sizeInches ?? "—"} in`} />
         <Field label="Reference freedom" value={`${submission.referenceFreedom}% artist's interpretation`} />
         <Field label="Detected style" value={submission.aiDetectedStyle ?? "—"} />
-        <Field label="AI complexity" value={submission.aiComplexity ? `${submission.aiComplexity}/10` : "—"} />
+        <Field label="Complexity" value={submission.aiComplexity ? `${submission.aiComplexity}/10` : "—"} />
         <Field
-          label="AI confidence"
+          label="Confidence"
           value={submission.aiConfidence ? `${Math.round(submission.aiConfidence * 100)}%` : "—"}
         />
       </div>
@@ -66,7 +66,7 @@ export default async function SubmissionDetailPage({
       )}
 
       <Card className="mt-6">
-        <p className="font-mono text-[11px] uppercase tracking-wide text-grey">AI estimate</p>
+        <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Estimate</p>
         <p className="mt-1 font-display text-2xl text-ink">
           ${submission.estimatedPriceLow?.toFixed(0)}–${submission.estimatedPriceHigh?.toFixed(0)}
         </p>

@@ -23,7 +23,7 @@ export default function TermsPage() {
             <h2 className="font-display text-xl text-ink">1. What the Platform is</h2>
             <p className="mt-2">
               The Platform lets tattoo artists and shops ("Artists," "you") create a public
-              booking page where their clients can submit tattoo requests, receive AI-generated
+              booking page where their clients can submit tattoo requests, receive automated
               price estimates, and book appointments. We provide the software — we are not a
               party to, and have no responsibility for, the tattooing services an Artist provides
               to their clients, including pricing, quality, scheduling conflicts outside the
@@ -54,11 +54,11 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl text-ink">4. AI-generated estimates</h2>
+            <h2 className="font-display text-xl text-ink">4. Automated estimates</h2>
             <p className="mt-2">
               Price estimates and complexity/routing decisions shown to clients are generated
-              automatically from a photo and description using an AI model, based on rules and
-              rates each Artist configures. Estimates are not guaranteed to be accurate, and
+              automatically from a photo and description using an automated image-analysis
+              service, based on rules and rates each Artist configures. Estimates are not guaranteed to be accurate, and
               final pricing is always up to the Artist. We aren't liable for any pricing
               discrepancy, lost business, or client dispute arising from an estimate.
             </p>
@@ -90,7 +90,7 @@ export default function TermsPage() {
             <h2 className="font-display text-xl text-ink">7. Third-party services</h2>
             <p className="mt-2">
               The Platform relies on third-party services to function — including Stripe
-              (billing), Google (calendar sync, AI image analysis), and Resend (email delivery).
+              (billing), Google (calendar sync, automated image analysis), and Resend (email delivery).
               Your use of the Platform is also subject to those providers' own terms, and we
               aren't responsible for their outages or errors.
             </p>
