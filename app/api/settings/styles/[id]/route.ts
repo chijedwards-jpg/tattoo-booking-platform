@@ -6,7 +6,7 @@ import { getSessionArtistId } from "@/lib/auth";
 
 const UpdateStyleSchema = z.object({
   name: z.string().trim().min(1).optional(),
-  timeMultiplier: z.number().positive().optional(),
+  multiplier: z.number().positive().optional(),
   active: z.boolean().optional(),
 });
 

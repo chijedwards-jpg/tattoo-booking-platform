@@ -112,6 +112,12 @@ model PricingConfig {
   depositInstructions String?
   cancellationPolicy String?
 
+  // Whether each style's multiplier (TattooStyle.multiplier) scales the
+  // estimated session time (and so the booked slot length) or scales the
+  // price directly, leaving the AI's raw hour estimate untouched. Artist
+  // picks this once for their whole account, not per style.
+  styleMultiplierMode StyleMultiplierMode @default(TIME)
+
   updatedAt        DateTime @updatedAt
 }
 
@@ -120,14 +126,25 @@ enum DepositType {
   PERCENT
 }
 
-// Artist-configurable tattoo styles + time multipliers (PRD section 12)
+// TIME: multiplier scales the estimated hours (and so the booked slot
+// length) before price is computed from hours x hourly rate.
+// PRICE: multiplier scales the computed price directly; the booked slot
+// length reflects the AI's raw, unmultiplied hour estimate.
+enum StyleMultiplierMode {
+  TIME
+  PRICE
+}
+
+// Artist-configurable tattoo styles + multipliers (PRD section 12) — see
+// PricingConfig.styleMultiplierMode for whether `multiplier` below scales
+// time or price.
 model TattooStyle {
   id             String @id @default(cuid())
   artist         Artist @relation(fields: [artistId], references: [id])
   artistId       String
 
   name           String        // e.g. "Fine Line"
-  timeMultiplier Float         // e.g. 0.9
+  multiplier     Float         // e.g. 0.9
   active         Boolean @default(true)
 
   @@unique([artistId, name])

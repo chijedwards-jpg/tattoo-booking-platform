@@ -10,7 +10,7 @@ function assert(cond: boolean, msg: string) {
 const est1 = calculateEstimate(
   { detectedStyle: 'Color', estimatedHours: 2, complexity: 4, confidence: 0.9, colorVsBW: 'color' },
   { hourlyRate: 250, minimumPrice: 150, rangeSpreadPct: 0.1 },
-  [{ name: 'Color', timeMultiplier: 1.2 }]
+  [{ name: 'Color', multiplier: 1.2 }]
 );
 assert(est1.adjustedHours === 2.4, `adjustedHours 2.4, got ${est1.adjustedHours}`);
 assert(est1.basePrice === 600, `basePrice 600, got ${est1.basePrice}`);
@@ -21,7 +21,7 @@ assert(est1.priceLow === 540 && est1.priceHigh === 660, `range 540-660, got ${es
 const est2 = calculateEstimate(
   { detectedStyle: 'Minimalist', estimatedHours: 0.4, complexity: 1, confidence: 0.95, colorVsBW: 'black_grey' },
   { hourlyRate: 250, minimumPrice: 150, rangeSpreadPct: 0.1 },
-  [{ name: 'Minimalist', timeMultiplier: 0.9 }]
+  [{ name: 'Minimalist', multiplier: 0.9 }]
 );
 assert(est2.basePrice < 150, 'base price under minimum before floor applied');
 assert(est2.appliedMinimum === true, 'minimum applied');
@@ -35,6 +35,28 @@ const est3 = calculateEstimate(
   []
 );
 assert(est3.adjustedHours === 0.5, `adjustedHours floors at 0.5, got ${est3.adjustedHours}`);
+
+// --- Pricing: PRICE mode — multiplier scales price, not hours ---
+// 2 hours base, $250/hr, Color multiplier 1.2: in TIME mode this would be
+// 2.4 adjusted hours / $600 base price (see est1). In PRICE mode, hours
+// stay at the raw 2-hour read and the multiplier applies to price instead.
+const est4 = calculateEstimate(
+  { detectedStyle: 'Color', estimatedHours: 2, complexity: 4, confidence: 0.9, colorVsBW: 'color' },
+  { hourlyRate: 250, minimumPrice: 150, rangeSpreadPct: 0.1 },
+  [{ name: 'Color', multiplier: 1.2 }],
+  'PRICE'
+);
+assert(est4.adjustedHours === 2, `PRICE mode leaves hours unmultiplied, got ${est4.adjustedHours}`);
+assert(est4.basePrice === 600, `PRICE mode still reaches basePrice 600, got ${est4.basePrice}`);
+
+// --- Pricing: PRICE mode still floors hours at the minimum session length ---
+const est5 = calculateEstimate(
+  { detectedStyle: 'Color', estimatedHours: 0.02, complexity: 1, confidence: 0.1, colorVsBW: 'color' },
+  { hourlyRate: 200, minimumPrice: 100, rangeSpreadPct: 0.15 },
+  [{ name: 'Color', multiplier: 1.2 }],
+  'PRICE'
+);
+assert(est5.adjustedHours === 0.5, `PRICE mode still floors hours, got ${est5.adjustedHours}`);
 
 // --- Routing: clean GREEN case ---
 const rules = {

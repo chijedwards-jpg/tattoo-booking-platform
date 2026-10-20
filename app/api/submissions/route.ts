@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
       minimumPrice: artist.pricingConfig.minimumPrice,
       rangeSpreadPct: artist.pricingConfig.rangeSpreadPct,
     },
-    artist.styles.map((s) => ({ name: s.name, timeMultiplier: s.timeMultiplier }))
+    artist.styles.map((s) => ({ name: s.name, multiplier: s.multiplier })),
+    artist.pricingConfig.styleMultiplierMode
   );
 
   // --- Check artist restrictions --------------------------------------------

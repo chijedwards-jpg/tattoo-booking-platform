@@ -8,8 +8,10 @@
 
 export interface StyleConfig {
   name: string;
-  timeMultiplier: number;
+  multiplier: number;
 }
+
+export type StyleMultiplierMode = 'TIME' | 'PRICE';
 
 export interface PricingConfigInput {
   hourlyRate: number;
@@ -42,21 +44,36 @@ export interface PriceEstimate {
 const MIN_SESSION_HOURS = 0.5;
 
 /**
- * Core calculation: estimated hours x hourly rate, adjusted by style
+ * Core calculation: estimated hours x hourly rate, adjusted by a style
  * multiplier, floored by minimum price, expressed as a range.
+ *
+ * mode controls what the style multiplier actually scales:
+ *  - TIME: multiplies the estimated hours, so a "busier" style both costs
+ *    more (more hours x hourly rate) and books a longer slot.
+ *  - PRICE: hours stay at the AI's raw read (still floored at
+ *    MIN_SESSION_HOURS); the multiplier is applied to price directly, so a
+ *    "premium" style costs more without needing a longer booked slot.
  */
 export function calculateEstimate(
   ai: AiAnalysisInput,
   pricing: PricingConfigInput,
-  styles: StyleConfig[]
+  styles: StyleConfig[],
+  mode: StyleMultiplierMode = 'TIME'
 ): PriceEstimate {
   const styleConfig = styles.find(
     (s) => s.name.toLowerCase() === ai.detectedStyle.toLowerCase()
   );
-  const styleMultiplierUsed = styleConfig?.timeMultiplier ?? 1.0;
+  const styleMultiplierUsed = styleConfig?.multiplier ?? 1.0;
 
-  const adjustedHours = Math.max(MIN_SESSION_HOURS, round2(ai.estimatedHours * styleMultiplierUsed));
-  const basePrice = round2(adjustedHours * pricing.hourlyRate);
+  const adjustedHours =
+    mode === 'TIME'
+      ? Math.max(MIN_SESSION_HOURS, round2(ai.estimatedHours * styleMultiplierUsed))
+      : Math.max(MIN_SESSION_HOURS, round2(ai.estimatedHours));
+
+  const basePrice =
+    mode === 'TIME'
+      ? round2(adjustedHours * pricing.hourlyRate)
+      : round2(adjustedHours * pricing.hourlyRate * styleMultiplierUsed);
 
   let centerPrice = basePrice;
   let appliedMinimum = false;

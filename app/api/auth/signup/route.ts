@@ -75,12 +75,12 @@ export async function POST(req: NextRequest) {
       },
       styles: {
         create: [
-          { name: "Minimalist", timeMultiplier: 0.7 },
-          { name: "Fine Line", timeMultiplier: 0.9 },
-          { name: "Traditional", timeMultiplier: 1.0 },
-          { name: "Black & Grey", timeMultiplier: 1.1 },
-          { name: "Color", timeMultiplier: 1.2 },
-          { name: "Realism", timeMultiplier: 1.4 },
+          { name: "Minimalist", multiplier: 0.7 },
+          { name: "Fine Line", multiplier: 0.9 },
+          { name: "Traditional", multiplier: 1.0 },
+          { name: "Black & Grey", multiplier: 1.1 },
+          { name: "Color", multiplier: 1.2 },
+          { name: "Realism", multiplier: 1.4 },
         ],
       },
     },

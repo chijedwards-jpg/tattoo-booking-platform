@@ -6,7 +6,7 @@ import { getSessionArtistId } from "@/lib/auth";
 
 const CreateStyleSchema = z.object({
   name: z.string().trim().min(1),
-  timeMultiplier: z.number().positive(),
+  multiplier: z.number().positive(),
 });
 
 export async function POST(req: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const style = await prisma.tattooStyle.create({
-      data: { artistId, name: parsed.data.name, timeMultiplier: parsed.data.timeMultiplier },
+      data: { artistId, name: parsed.data.name, multiplier: parsed.data.multiplier },
     });
     return NextResponse.json({ style });
   } catch (err) {

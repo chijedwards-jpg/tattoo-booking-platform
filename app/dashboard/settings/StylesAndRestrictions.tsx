@@ -11,12 +11,13 @@ import { Card, Field, PrimaryButton, inputClass } from "../../ui";
 // Tattoo styles
 // ---------------------------------------------------------------------------
 
-export function StylesForm({ styles }: { styles: TattooStyle[] }) {
+export function StylesForm({ styles, mode }: { styles: TattooStyle[]; mode: "TIME" | "PRICE" }) {
   const [rows, setRows] = useState(styles);
   const [newName, setNewName] = useState("");
   const [newMultiplier, setNewMultiplier] = useState("1.0");
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const multiplierLabel = mode === "TIME" ? "Time ×" : "Price ×";
 
   async function addStyle(e: React.FormEvent) {
     e.preventDefault();
@@ -26,7 +27,7 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
       const res = await fetch("/api/settings/styles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName, timeMultiplier: Number(newMultiplier) }),
+        body: JSON.stringify({ name: newName, multiplier: Number(newMultiplier) }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -50,6 +51,7 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
           <StyleRow
             key={style.id}
             style={style}
+            multiplierLabel={multiplierLabel}
             onSaved={(updated) => setRows((r) => r.map((s) => (s.id === updated.id ? updated : s)))}
             onDeleted={(id) => setRows((r) => r.filter((s) => s.id !== id))}
           />
@@ -70,7 +72,7 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
           </Field>
         </div>
         <div className="w-28">
-          <Field label="Time ×">
+          <Field label={multiplierLabel}>
             <input
               type="number"
               step="0.1"
@@ -93,19 +95,21 @@ export function StylesForm({ styles }: { styles: TattooStyle[] }) {
 
 function StyleRow({
   style,
+  multiplierLabel,
   onSaved,
   onDeleted,
 }: {
   style: TattooStyle;
+  multiplierLabel: string;
   onSaved: (style: TattooStyle) => void;
   onDeleted: (id: string) => void;
 }) {
   const [name, setName] = useState(style.name);
-  const [timeMultiplier, setTimeMultiplier] = useState(String(style.timeMultiplier));
+  const [multiplier, setMultiplier] = useState(String(style.multiplier));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = name !== style.name || Number(timeMultiplier) !== style.timeMultiplier;
+  const dirty = name !== style.name || Number(multiplier) !== style.multiplier;
 
   async function save() {
     setSaving(true);
@@ -114,7 +118,7 @@ function StyleRow({
       const res = await fetch(`/api/settings/styles/${style.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, timeMultiplier: Number(timeMultiplier) }),
+        body: JSON.stringify({ name, multiplier: Number(multiplier) }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -166,8 +170,10 @@ function StyleRow({
           type="number"
           step="0.1"
           min="0.1"
-          value={timeMultiplier}
-          onChange={(e) => setTimeMultiplier(e.target.value)}
+          value={multiplier}
+          onChange={(e) => setMultiplier(e.target.value)}
+          title={multiplierLabel}
+          aria-label={multiplierLabel}
           className={`w-20 !mt-0 ${inputClass()} ${!style.active ? "opacity-40" : ""}`}
         />
         {dirty && (
