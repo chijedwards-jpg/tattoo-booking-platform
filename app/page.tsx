@@ -1,10 +1,10 @@
-import { Sparkles, CalendarClock, Wallet, Globe } from "lucide-react";
+import { Zap, CalendarClock, Wallet, Globe } from "lucide-react";
 
 const FEATURES = [
   {
-    Icon: Sparkles,
-    title: "Instant pricing estimates",
-    body: "Clients submit a photo and description; you get an instant price range and a GREEN/YELLOW/RED routing decision — auto-bookable, needs your review, or needs a consult.",
+    Icon: Zap,
+    title: "Skips the back-and-forth",
+    body: "A saved Pinterest photo doesn't need a conversation. Straightforward requests get an instant price and go straight to booking — no texts about \"how much\" or \"when are you free.\"",
   },
   {
     Icon: CalendarClock,
@@ -26,7 +26,7 @@ const FEATURES = [
 const STEPS = [
   { n: "1", title: "Sign up", body: "Create your account and pick your booking page URL. Takes under a minute." },
   { n: "2", title: "Set your rules", body: "Hourly rate, styles you do, booking thresholds, and your weekly availability." },
-  { n: "3", title: "Share your link", body: "Send clients to your page. Requests, pricing, and booking happen automatically." },
+  { n: "3", title: "Share your link", body: "Send clients to your page. The simple ones book themselves — you only hear from the ones that actually need you." },
 ];
 
 function NavButton({ href, children, primary }: { href: string; children: React.ReactNode; primary?: boolean }) {
@@ -59,11 +59,12 @@ export default function LandingPage() {
 
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
         <h1 className="font-display text-5xl leading-tight text-ink">
-          Run your tattoo bookings on autopilot.
+          Some clients don't want to talk — they want a price and a time.
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-grey">
-          Pricing estimates, booking rules, calendar sync, and deposits — one page for your
-          clients, one dashboard for you. Built for independent artists and shops.
+          A copy-paste Pinterest tattoo doesn't need a consultation. This reads it, prices it,
+          and books the straightforward ones automatically — so you're not spending your day
+          answering "how much" and "when are you free."
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <NavButton href="/signup" primary>
@@ -107,7 +108,7 @@ export default function LandingPage() {
           <p className="mt-1 text-sm text-grey">14-day free trial, then billed monthly.</p>
           <ul className="mt-5 space-y-2 text-left text-sm text-ink">
             <li>— Your own public booking page</li>
-            <li>— Instant pricing estimates & routing</li>
+            <li>— Auto-books the simple requests, no back-and-forth</li>
             <li>— Google Calendar busy-time sync</li>
             <li>— Email notifications for you and clients</li>
             <li>— Cancel anytime from your dashboard</li>
