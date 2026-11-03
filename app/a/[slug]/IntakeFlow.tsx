@@ -40,11 +40,13 @@ export default function IntakeFlow({
   artistName,
   artistBio,
   portfolioImages,
+  hasFlash,
 }: {
   artistSlug: string;
   artistName: string;
   artistBio: string | null;
   portfolioImages: string[];
+  hasFlash: boolean;
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEP_KEYS[stepIndex];
@@ -143,6 +145,7 @@ export default function IntakeFlow({
               artistName={artistName}
               artistBio={artistBio}
               portfolioImages={portfolioImages}
+              flashHref={hasFlash ? `/a/${artistSlug}/flash` : null}
               onNext={next}
             />
           )}
@@ -219,11 +222,13 @@ function WelcomeStep({
   artistName,
   artistBio,
   portfolioImages,
+  flashHref,
   onNext,
 }: {
   artistName: string;
   artistBio: string | null;
   portfolioImages: string[];
+  flashHref: string | null;
   onNext: () => void;
 }) {
   const initials = artistName
@@ -255,6 +260,14 @@ function WelcomeStep({
         <PrimaryButton full onClick={onNext}>
           Start your tattoo <ArrowRight size={16} />
         </PrimaryButton>
+        {flashHref && (
+          <a
+            href={flashHref}
+            className="mt-3 block rounded-xl border border-line bg-card px-4 py-3 text-sm font-medium text-ink transition-colors hover:border-ink-red/50"
+          >
+            Browse flash designs
+          </a>
+        )}
         <p className="mt-3 text-xs text-grey">
           Upload → estimate → book. No back-and-forth if it's straightforward.
         </p>

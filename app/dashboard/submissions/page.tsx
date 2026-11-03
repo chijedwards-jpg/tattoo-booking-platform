@@ -38,7 +38,7 @@ export default async function SubmissionsPage() {
             >
               {s.inspirationImages[0] && (
                 <img
-                  src={s.inspirationImages[0]}
+                  src={`/api/submissions/${s.id}/images/0`}
                   className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
                 />
               )}

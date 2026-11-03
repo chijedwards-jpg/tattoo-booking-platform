@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home, Users, Calendar, DollarSign, Palette, ShieldAlert, CalendarClock, Settings as SettingsIcon, CreditCard, Images,
+  Home, Users, Calendar, DollarSign, Palette, ShieldAlert, CalendarClock, Settings as SettingsIcon, CreditCard, Images, Zap,
 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", Icon: Home },
   { href: "/dashboard/submissions", label: "Submissions", Icon: Users },
   { href: "/dashboard/calendar", label: "Calendar", Icon: Calendar },
+  { href: "/dashboard/flash", label: "Flash", Icon: Zap },
   { href: "/dashboard/settings/pricing", label: "Pricing", Icon: DollarSign },
   { href: "/dashboard/settings/styles", label: "Styles & Time", Icon: Palette },
   { href: "/dashboard/settings/rules", label: "Booking Rules", Icon: ShieldAlert },

@@ -64,7 +64,7 @@ export default async function OverviewPage() {
             >
               <div className="flex items-center gap-3">
                 {s.inspirationImages[0] && (
-                  <img src={s.inspirationImages[0]} className="h-9 w-9 rounded-lg object-cover" />
+                  <img src={`/api/submissions/${s.id}/images/0`} className="h-9 w-9 rounded-lg object-cover" />
                 )}
                 <div>
                   <p className="font-medium text-ink">

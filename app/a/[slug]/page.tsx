@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import IntakeFlow from "./IntakeFlow";
+import { isFlashBookable } from "@/lib/flash";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,11 @@ export default async function ArtistIntakePage({
     include: {
       pricingConfig: true,
       bookingRules: true,
-      portfolioImages: { orderBy: { createdAt: "desc" } },
+      portfolioImages: { orderBy: { createdAt: "desc" }, select: { id: true } },
+      flashDesigns: {
+        where: { active: true },
+        select: { oneOff: true, claimedAt: true, active: true },
+      },
     },
   });
 
@@ -46,7 +51,8 @@ export default async function ArtistIntakePage({
       artistSlug={artist.slug}
       artistName={artist.name}
       artistBio={artist.bio}
-      portfolioImages={artist.portfolioImages.map((i) => i.imageDataUrl)}
+      portfolioImages={artist.portfolioImages.map((i) => `/api/public/portfolio/${i.id}/image`)}
+      hasFlash={artist.flashDesigns.some(isFlashBookable)}
     />
   );
 }

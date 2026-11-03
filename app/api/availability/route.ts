@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { calculateAvailableSlots } from "@/lib/availability";
-import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
-import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
-
-const SLOT_SEARCH_DAYS_AHEAD = 14; // must match calculateAvailableSlots' own default
+import { findOpenSlots } from "@/lib/slots";
 
 export async function GET(req: NextRequest) {
   const submissionId = req.nextUrl.searchParams.get("submissionId");
@@ -28,41 +24,12 @@ export async function GET(req: NextRequest) {
       ? submission.artist.bookingRules.consultationDurationMins
       : Math.round((submission.artistOverrideHours ?? submission.estimatedHours ?? 1) * 60);
 
-  const windows = submission.artist.availability
-    .filter((a) => a.type === type && a.dayOfWeek !== null)
-    .map((a) => ({
-      dayOfWeek: a.dayOfWeek as number,
-      startTime: a.startTime,
-      endTime: a.endTime,
-    }));
-
-  // An artist can't be double-booked regardless of appointment type, so
-  // consultation slots need to steer clear of scheduled tattoo appointments
-  // (and vice versa) — no type filter here on purpose.
-  const existingAppointments = await prisma.appointment.findMany({
-    where: { artistId: submission.artistId, status: "SCHEDULED" },
-  });
-
-  // Also fold in the artist's real Google Calendar busy times, if they've
-  // connected one — a personal dentist appointment shouldn't be offered to
-  // a client as a bookable slot. Fails open to [] on any error (not
-  // connected, revoked access, Google API hiccup) rather than breaking
-  // availability entirely; see fetchGoogleBusyIntervals.
-  const now = new Date();
-  const searchEnd = new Date(now);
-  searchEnd.setDate(searchEnd.getDate() + SLOT_SEARCH_DAYS_AHEAD);
-  const googleBusy = await fetchGoogleBusyIntervals(submission.artistId, now, searchEnd);
-
-  const timeZone = submission.artist.timeZone ?? DEFAULT_TIME_ZONE;
-
-  const slots = calculateAvailableSlots({
-    weeklyAvailability: windows,
-    busy: [
-      ...existingAppointments.map((a) => ({ start: a.startTime, end: a.endTime })),
-      ...googleBusy,
-    ],
+  const { slots, timeZone } = await findOpenSlots({
+    artistId: submission.artistId,
+    timeZone: submission.artist.timeZone,
+    availability: submission.artist.availability,
+    type,
     durationMins,
-    timeZone,
   });
 
   return NextResponse.json({

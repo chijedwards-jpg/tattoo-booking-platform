@@ -44,8 +44,8 @@ export default async function SubmissionDetailPage({
 
       {submission.inspirationImages.length > 0 && (
         <div className={`mt-6 grid gap-2 ${submission.inspirationImages.length > 1 ? "grid-cols-2" : ""}`}>
-          {submission.inspirationImages.map((src, i) => (
-            <img key={i} src={src} className="aspect-square w-full rounded-2xl object-cover" />
+          {submission.inspirationImages.map((_, i) => (
+            <img key={i} src={`/api/submissions/${submission.id}/images/${i}`} className="aspect-square w-full rounded-2xl object-cover" />
           ))}
         </div>
       )}

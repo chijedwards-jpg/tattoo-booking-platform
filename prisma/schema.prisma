@@ -52,6 +52,7 @@ model Artist {
   submissions   Submission[]
   appointments  Appointment[]
   portfolioImages PortfolioImage[]
+  flashDesigns  FlashDesign[]
 
   // OAuth connection to the artist's real Google Calendar — the single
   // calendar integration: blocks busy times from bookable slots, pushes
@@ -65,6 +66,28 @@ model Artist {
 // cascade-delete along with the artist (unlike the rest of this schema,
 // which defaults to RESTRICT to force explicit cleanup of real business
 // records).
+model FlashDesign {
+  id           String   @id @default(cuid())
+  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId     String
+
+  name         String
+  imageDataUrl String   // data:image/...;base64,... same pattern as PortfolioImage
+  price        Float
+  durationMins Int
+
+  // true = one of a kind, comes off the page once booked. false = repeatable.
+  oneOff       Boolean  @default(false)
+  claimedAt    DateTime? // when a one-of-a-kind design was booked
+  active       Boolean  @default(true) // false = hidden from clients by the artist
+
+  createdAt    DateTime @default(now())
+
+  submissions  Submission[]
+
+  @@index([artistId])
+}
+
 model PortfolioImage {
   id           String   @id @default(cuid())
   artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
@@ -267,6 +290,11 @@ model Submission {
   artistOverridePriceHigh Float?
   artistOverrideHours     Float?
   artistNotes             String?
+
+  // Set when this came from a flash booking rather than the custom request
+  // form, so it shows up with everything else in the artist's dashboard.
+  flashDesign        FlashDesign? @relation(fields: [flashDesignId], references: [id], onDelete: SetNull)
+  flashDesignId      String?
 
   appointment        Appointment?
 }

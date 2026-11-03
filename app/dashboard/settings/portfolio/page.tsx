@@ -12,6 +12,7 @@ export default async function PortfolioSettingsPage() {
   const images = await prisma.portfolioImage.findMany({
     where: { artistId },
     orderBy: { createdAt: "desc" },
+    select: { id: true, caption: true },
   });
 
   return (
@@ -22,7 +23,11 @@ export default async function PortfolioSettingsPage() {
       </p>
       <div className="mt-6">
         <PortfolioForm
-          images={images.map((i) => ({ id: i.id, imageDataUrl: i.imageDataUrl, caption: i.caption }))}
+          images={images.map((i) => ({
+            id: i.id,
+            imageDataUrl: `/api/public/portfolio/${i.id}/image`,
+            caption: i.caption,
+          }))}
         />
       </div>
     </div>
