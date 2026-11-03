@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const durationMins =
     type === "CONSULTATION"
       ? submission.artist.bookingRules.consultationDurationMins
-      : Math.round((submission.estimatedHours ?? 1) * 60);
+      : Math.round((submission.artistOverrideHours ?? submission.estimatedHours ?? 1) * 60);
 
   const windows = submission.artist.availability
     .filter((a) => a.type === type && a.dayOfWeek !== null)

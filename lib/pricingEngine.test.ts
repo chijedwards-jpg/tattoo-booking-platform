@@ -125,4 +125,20 @@ const redDuration = decideRouting(
 );
 assert(redDuration === 'RED_CONSULTATION_REQUIRED', `expected RED, got ${redDuration}`);
 
+// --- Routing: client's notes call for a consultation -> RED even if everything else fine ---
+const redComment = decideRouting(
+  {
+    estimatedHours: 1,
+    complexity: 2,
+    aiConfidence: 0.95,
+    referenceFreedom: 0,
+    placementRestricted: false,
+    styleRestricted: false,
+    subjectMatterRestricted: false,
+    commentNeedsConsultation: true,
+  },
+  rules
+);
+assert(redComment === 'RED_CONSULTATION_REQUIRED', `expected RED, got ${redComment}`);
+
 console.log('\nAll pricing engine tests passed.');

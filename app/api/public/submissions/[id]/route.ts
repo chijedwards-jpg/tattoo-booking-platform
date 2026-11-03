@@ -25,6 +25,7 @@ export async function GET(
       estimatedPriceHigh: true,
       artistOverridePriceLow: true,
       artistOverridePriceHigh: true,
+      artistOverrideHours: true,
       artist: { select: { pricingConfig: true } },
       appointment: {
         select: { startTime: true, type: true, depositPaid: true, depositAmount: true },
@@ -43,7 +44,7 @@ export async function GET(
     status: submission.status,
     placement: submission.placement,
     detectedStyle: submission.aiDetectedStyle,
-    hours: submission.estimatedHours,
+    hours: submission.artistOverrideHours ?? submission.estimatedHours,
     priceLow,
     priceHigh: submission.artistOverridePriceHigh ?? submission.estimatedPriceHigh,
     bookable: BOOKABLE_STATUSES.includes(submission.status),

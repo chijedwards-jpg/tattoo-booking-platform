@@ -11,6 +11,7 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 // single request can push through a billed Gemini call and into a Postgres
 // row (inspirationImages is stored as plain text, not a file upload).
 const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024 * 1.4;
+const MAX_IMAGES = 5;
 
 const SubmissionSchema = z.object({
   artistSlug: z.string(),
@@ -19,7 +20,10 @@ const SubmissionSchema = z.object({
   clientPhone: z.string().optional(),
 
   // data:image/jpeg;base64,... — sent straight from the browser's file input
-  inspirationImageDataUrl: z.string().max(MAX_BASE64_IMAGE_LENGTH, "Image is too large"),
+  inspirationImageDataUrls: z
+    .array(z.string().max(MAX_BASE64_IMAGE_LENGTH, "Image is too large"))
+    .min(1)
+    .max(MAX_IMAGES),
   placement: z.string(),
   sizeInches: z.number().optional(),
   sizePreset: z.string().optional(),
@@ -81,21 +85,28 @@ export async function POST(req: NextRequest) {
 
   // --- Parse the data URL into base64 + media type ------------------------
 
-  const match = input.inspirationImageDataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
-  if (!match) {
-    return NextResponse.json({ error: "Invalid image data" }, { status: 400 });
+  const images = [];
+  for (const dataUrl of input.inspirationImageDataUrls) {
+    const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) {
+      return NextResponse.json({ error: "Invalid image data" }, { status: 400 });
+    }
+    images.push({
+      mediaType: match[1] as "image/jpeg" | "image/png" | "image/webp",
+      base64Image: match[2],
+    });
   }
-  const [, mimeType, base64Data] = match;
 
   // --- Run image analysis ------------------------------------------------------
 
   let aiResult;
   try {
     aiResult = await analyzeInspirationImage({
-      base64Image: base64Data,
-      mediaType: mimeType as "image/jpeg" | "image/png" | "image/webp",
+      images,
       description: input.description,
       sizeInches: input.sizeInches,
+      sizePreset: input.sizePreset,
+      placement: input.placement,
     });
   } catch (err) {
     console.error("Image analysis failed:", err);
@@ -138,6 +149,7 @@ export async function POST(req: NextRequest) {
       placementRestricted,
       styleRestricted,
       subjectMatterRestricted: false, // no subject-matter detection yet
+      commentNeedsConsultation: aiResult.needsConsultation,
     },
     {
       maxAutoBookDurationMins: artist.bookingRules.maxAutoBookDurationMins,
@@ -154,7 +166,7 @@ export async function POST(req: NextRequest) {
     data: {
       artistId: artist.id,
       clientId: client.id,
-      inspirationImages: [input.inspirationImageDataUrl],
+      inspirationImages: input.inspirationImageDataUrls,
       description: input.description,
       placement: input.placement,
       sizeInches: input.sizeInches,
@@ -166,6 +178,10 @@ export async function POST(req: NextRequest) {
       aiEstimatedHours: aiResult.estimatedHours,
       aiConfidence: aiResult.confidence,
       aiColorVsBW: aiResult.colorVsBW,
+      aiRawAnalysis: {
+        needsConsultation: aiResult.needsConsultation,
+        consultationReason: aiResult.consultationReason,
+      },
 
       estimatedPriceLow: estimate.priceLow,
       estimatedPriceHigh: estimate.priceHigh,

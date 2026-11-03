@@ -10,6 +10,8 @@ export default function ReviewActions({
   currentStatus,
   suggestedLow,
   suggestedHigh,
+  suggestedHours,
+  artistOverrideHours,
   artistOverridePriceLow,
   artistOverridePriceHigh,
   artistNotes,
@@ -18,6 +20,8 @@ export default function ReviewActions({
   currentStatus: string;
   suggestedLow: number;
   suggestedHigh: number;
+  suggestedHours: number;
+  artistOverrideHours: number | null;
   artistOverridePriceLow: number | null;
   artistOverridePriceHigh: number | null;
   artistNotes: string | null;
@@ -26,8 +30,19 @@ export default function ReviewActions({
   const [overriding, setOverriding] = useState(false);
   const [low, setLow] = useState(artistOverridePriceLow ?? suggestedLow);
   const [high, setHigh] = useState(artistOverridePriceHigh ?? suggestedHigh);
+  const [hours, setHours] = useState(artistOverrideHours ?? suggestedHours);
   const [notes, setNotes] = useState(artistNotes ?? "");
   const [submitting, setSubmitting] = useState(false);
+
+  // Starts the price from the new time, since most artists price by the hour.
+  // Both prices stay editable if this one should be different.
+  function changeHours(next: number) {
+    setHours(next);
+    if (next > 0 && suggestedHours > 0) {
+      setLow(Math.round((suggestedLow * next) / suggestedHours));
+      setHigh(Math.round((suggestedHigh * next) / suggestedHours));
+    }
+  }
 
   async function updateStatus(status: string, overridePrice = false) {
     setSubmitting(true);
@@ -38,7 +53,7 @@ export default function ReviewActions({
         body: JSON.stringify({
           status,
           ...(overridePrice
-            ? { artistOverridePriceLow: low, artistOverridePriceHigh: high, artistNotes: notes }
+            ? { artistOverridePriceLow: low, artistOverridePriceHigh: high, artistOverrideHours: hours, artistNotes: notes }
             : {}),
         }),
       });
@@ -73,6 +88,21 @@ export default function ReviewActions({
         </div>
       ) : (
         <Card>
+          <div className="mb-3">
+            <Field label="Hours">
+              <input
+                type="number"
+                min={0.5}
+                step={0.5}
+                value={hours}
+                onChange={(e) => changeHours(Number(e.target.value))}
+                className={inputClass()}
+              />
+            </Field>
+            <p className="mt-1 text-xs text-grey">
+              This sets how long a slot the client books. Prices below update to match.
+            </p>
+          </div>
           <div className="flex gap-3">
             <Field label="Low ($)">
               <input
@@ -98,7 +128,7 @@ export default function ReviewActions({
             rows={2}
             className={`mt-3 ${inputClass()}`}
           />
-          <PrimaryButton full className="mt-3" disabled={submitting} onClick={() => updateStatus("APPROVED", true)}>
+          <PrimaryButton full className="mt-3" disabled={submitting || hours <= 0} onClick={() => updateStatus("APPROVED", true)}>
             <Check size={15} /> Save & approve
           </PrimaryButton>
         </Card>

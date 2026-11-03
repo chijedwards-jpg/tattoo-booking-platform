@@ -28,6 +28,9 @@ export default async function SubmissionDetailPage({
   // isn't theirs.
   if (!submission || submission.artistId !== artistId) return notFound();
 
+  const consultationReason = (submission.aiRawAnalysis as { consultationReason?: string | null } | null)
+    ?.consultationReason;
+
   return (
     <div className="mx-auto max-w-2xl">
       <Link href="/dashboard/submissions" className="flex items-center gap-1 text-sm text-grey hover:text-ink">
@@ -39,11 +42,12 @@ export default async function SubmissionDetailPage({
         Submitted {new Date(submission.createdAt).toLocaleString()}
       </p>
 
-      {submission.inspirationImages[0] && (
-        <img
-          src={submission.inspirationImages[0]}
-          className="mt-6 aspect-square w-full rounded-2xl object-cover"
-        />
+      {submission.inspirationImages.length > 0 && (
+        <div className={`mt-6 grid gap-2 ${submission.inspirationImages.length > 1 ? "grid-cols-2" : ""}`}>
+          {submission.inspirationImages.map((src, i) => (
+            <img key={i} src={src} className="aspect-square w-full rounded-2xl object-cover" />
+          ))}
+        </div>
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-3">
@@ -65,12 +69,21 @@ export default async function SubmissionDetailPage({
         </div>
       )}
 
+      {consultationReason && (
+        <div className="mt-6">
+          <p className="font-mono text-[11px] uppercase tracking-wide text-grey">
+            Why a consultation was suggested
+          </p>
+          <p className="mt-1 text-sm text-ink">{consultationReason}</p>
+        </div>
+      )}
+
       <Card className="mt-6">
         <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Estimate</p>
         <p className="mt-1 font-display text-2xl text-ink">
-          ${submission.estimatedPriceLow?.toFixed(0)}–${submission.estimatedPriceHigh?.toFixed(0)}
+          ${(submission.artistOverridePriceLow ?? submission.estimatedPriceLow)?.toFixed(0)}–${(submission.artistOverridePriceHigh ?? submission.estimatedPriceHigh)?.toFixed(0)}
         </p>
-        <p className="mt-1 text-sm text-grey">{submission.estimatedHours?.toFixed(1)} hours</p>
+        <p className="mt-1 text-sm text-grey">{(submission.artistOverrideHours ?? submission.estimatedHours)?.toFixed(1)} hours</p>
       </Card>
 
       {submission.status === "BOOKED" && submission.appointment ? (
@@ -88,6 +101,8 @@ export default async function SubmissionDetailPage({
           currentStatus={submission.status}
           suggestedLow={submission.estimatedPriceLow ?? 0}
           suggestedHigh={submission.estimatedPriceHigh ?? 0}
+          suggestedHours={submission.estimatedHours ?? 1}
+          artistOverrideHours={submission.artistOverrideHours}
           artistOverridePriceLow={submission.artistOverridePriceLow}
           artistOverridePriceHigh={submission.artistOverridePriceHigh}
           artistNotes={submission.artistNotes}

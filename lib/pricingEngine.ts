@@ -123,6 +123,7 @@ export interface RoutingInput {
   styleRestricted: boolean;
   subjectMatterRestricted: boolean;
   artistForcedConsultation?: boolean; // manual artist-defined flag
+  commentNeedsConsultation?: boolean; // client's notes call for a conversation first
 }
 
 /**
@@ -143,6 +144,7 @@ export function decideRouting(
   // Hard stops -> RED
   if (
     input.artistForcedConsultation ||
+    input.commentNeedsConsultation ||
     input.placementRestricted ||
     input.styleRestricted ||
     input.subjectMatterRestricted ||

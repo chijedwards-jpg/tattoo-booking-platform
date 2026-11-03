@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
   const durationMins =
     type === "CONSULTATION"
       ? submission.artist.bookingRules.consultationDurationMins
-      : Math.round((submission.estimatedHours ?? 1) * 60);
+      : Math.round((submission.artistOverrideHours ?? submission.estimatedHours ?? 1) * 60);
   const startTime = new Date(parsed.data.startTime);
   const endTime = new Date(startTime.getTime() + durationMins * 60_000);
 

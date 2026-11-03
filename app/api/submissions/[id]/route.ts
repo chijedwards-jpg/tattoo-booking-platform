@@ -15,6 +15,7 @@ const UpdateSchema = z.object({
   ]),
   artistOverridePriceLow: z.number().optional(),
   artistOverridePriceHigh: z.number().optional(),
+  artistOverrideHours: z.number().positive().max(24).optional(),
   artistNotes: z.string().optional(),
 });
 

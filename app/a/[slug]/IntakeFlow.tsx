@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import {
-  Upload, MapPin, Ruler, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Plus,
+  Upload, MapPin, Ruler, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Plus, X,
 } from "lucide-react";
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
 import { PLACEMENTS, type Placement } from "@/lib/placements";
-import { fileToUploadDataUrl } from "@/lib/files";
+import { fileToUploadDataUrl, MAX_UPLOAD_DATA_URL_LENGTH } from "@/lib/files";
 import { Badge, PrimaryButton, GhostButton, Chip, Card, StepDots } from "../../ui";
 
 const SIZE_PRESETS = [
@@ -16,6 +16,13 @@ const SIZE_PRESETS = [
   { value: "hand", label: "Hand-sized", hint: "~7–9 in" },
   { value: "larger", label: "Larger", hint: "custom" },
 ];
+
+const MAX_PHOTOS = 5;
+
+interface InspirationPhoto {
+  file: File;
+  preview: string;
+}
 
 const STEP_KEYS = ["welcome", "upload", "reference", "placement", "size", "detail", "analyzing", "result"] as const;
 type StepKey = (typeof STEP_KEYS)[number];
@@ -42,8 +49,7 @@ export default function IntakeFlow({
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEP_KEYS[stepIndex];
 
-  const [inspirationPreview, setInspirationPreview] = useState<string | null>(null);
-  const [inspirationFile, setInspirationFile] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<InspirationPhoto[]>([]);
 
   const [freedom, setFreedom] = useState(20); // 0 = follow reference, 100 = artist's interpretation
   const [placement, setPlacement] = useState<Placement | null>(null);
@@ -58,13 +64,16 @@ export default function IntakeFlow({
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
   async function handleSubmit() {
-    if (!inspirationFile || !placement) return;
+    if (photos.length === 0 || !placement) return;
     setStepIndex(STEP_KEYS.indexOf("analyzing"));
     setSubmitting(true);
     setSubmitError(null);
 
     try {
-      const dataUrl = await fileToUploadDataUrl(inspirationFile);
+      // All the photos travel in one request, so they share its size limit.
+      const dataUrls = await Promise.all(
+        photos.map((p) => fileToUploadDataUrl(p.file, MAX_UPLOAD_DATA_URL_LENGTH / photos.length))
+      );
 
       const res = await fetch("/api/submissions", {
         method: "POST",
@@ -72,7 +81,7 @@ export default function IntakeFlow({
         body: JSON.stringify({
           artistSlug,
           clientEmail: email,
-          inspirationImageDataUrl: dataUrl,
+          inspirationImageDataUrls: dataUrls,
           placement,
           sizePreset: sizePreset ?? undefined,
           sizeInches: customWidth ? Number(customWidth) : undefined,
@@ -98,10 +107,18 @@ export default function IntakeFlow({
   }
 
   function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setInspirationFile(file);
-    setInspirationPreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-selecting a photo after removing it
+    setPhotos((current) =>
+      [
+        ...current,
+        ...files.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+      ].slice(0, MAX_PHOTOS)
+    );
+  }
+
+  function removePhoto(index: number) {
+    setPhotos((current) => current.filter((_, i) => i !== index));
   }
 
   function next() {
@@ -131,7 +148,15 @@ export default function IntakeFlow({
           )}
 
           {step === "upload" && (
-            <UploadStep preview={inspirationPreview} onUpload={handleUpload} onNext={next} onBack={back} />
+            <UploadStep
+              photos={photos}
+              onUpload={handleUpload}
+              onRemove={removePhoto}
+              description={description}
+              setDescription={setDescription}
+              onNext={next}
+              onBack={back}
+            />
           )}
 
           {step === "reference" && (
@@ -157,11 +182,10 @@ export default function IntakeFlow({
 
           {step === "detail" && (
             <DetailsStep
-              description={description}
-              setDescription={setDescription}
               email={email}
               setEmail={setEmail}
-              preview={inspirationPreview}
+              preview={photos[0]?.preview ?? null}
+              photoCount={photos.length}
               placement={placement}
               sizePreset={sizePreset}
               freedom={freedom}
@@ -244,13 +268,19 @@ function WelcomeStep({
 // ---------------------------------------------------------------------------
 
 function UploadStep({
-  preview,
+  photos,
   onUpload,
+  onRemove,
+  description,
+  setDescription,
   onNext,
   onBack,
 }: {
-  preview: string | null;
+  photos: InspirationPhoto[];
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove: (index: number) => void;
+  description: string;
+  setDescription: (s: string) => void;
   onNext: () => void;
   onBack: () => void;
 }) {
@@ -261,28 +291,69 @@ function UploadStep({
           What are you looking to get tattooed?
         </h1>
         <p className="mt-2 text-sm text-grey">
-          Upload a photo, screenshot, or drawing of what you have in mind.
+          Upload up to {MAX_PHOTOS} photos, screenshots, or drawings of what you have in mind.
         </p>
       </div>
 
-      <label className="group relative flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-card transition-colors hover:border-ink-red/60">
-        {preview ? (
-          <img src={preview} alt="Inspiration" className="h-full w-full object-cover" />
-        ) : (
+      {photos.length === 0 ? (
+        <label className="group relative flex aspect-square w-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-line bg-card transition-colors hover:border-ink-red/60">
           <div className="flex flex-col items-center gap-3 px-8 text-center">
             <Upload size={22} className="text-ink-red" />
-            <span className="text-sm text-grey">Tap to upload an image</span>
+            <span className="text-sm text-grey">Tap to upload images</span>
           </div>
-        )}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/heic"
-          className="hidden"
-          onChange={onUpload}
-        />
-      </label>
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/heic"
+            multiple
+            className="hidden"
+            onChange={onUpload}
+          />
+        </label>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {photos.map((photo, i) => (
+            <div key={photo.preview} className="relative aspect-square overflow-hidden rounded-xl border border-line">
+              <img src={photo.preview} alt={`Inspiration ${i + 1}`} className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                aria-label={`Remove photo ${i + 1}`}
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-ink/80 text-paper"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+          {photos.length < MAX_PHOTOS && (
+            <label className="flex aspect-square cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-card transition-colors hover:border-ink-red/60">
+              <Plus size={18} className="text-ink-red" />
+              <span className="text-xs text-grey">Add more</span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/heic"
+                multiple
+                className="hidden"
+                onChange={onUpload}
+              />
+            </label>
+          )}
+        </div>
+      )}
 
-      <StepNav onNext={onNext} onBack={onBack} disabled={!preview} />
+      <div>
+        <label className="font-mono text-xs uppercase tracking-wide text-grey">
+          Tell us about it (optional)
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="e.g. Keep it black and grey, make the lettering bigger, or this would cover an old tattoo…"
+          rows={3}
+          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
+        />
+      </div>
+
+      <StepNav onNext={onNext} onBack={onBack} disabled={photos.length === 0} />
     </div>
   );
 }
@@ -448,11 +519,10 @@ function SizeStep({
 // ---------------------------------------------------------------------------
 
 function DetailsStep({
-  description,
-  setDescription,
   email,
   setEmail,
   preview,
+  photoCount,
   placement,
   sizePreset,
   freedom,
@@ -461,11 +531,10 @@ function DetailsStep({
   submitting,
   submitError,
 }: {
-  description: string;
-  setDescription: (s: string) => void;
   email: string;
   setEmail: (s: string) => void;
   preview: string | null;
+  photoCount: number;
   placement: Placement | null;
   sizePreset: string | null;
   freedom: number;
@@ -495,17 +564,6 @@ function DetailsStep({
         />
       </div>
 
-      <div>
-        <label className="font-mono text-xs uppercase tracking-wide text-grey">Anything else? (optional)</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g. Keep it black and grey, make the lettering a bit bigger…"
-          rows={3}
-          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
-        />
-      </div>
-
       <Card>
         <p className="font-mono text-[11px] uppercase tracking-wide text-grey">Summary</p>
         <div className="mt-3 flex gap-3">
@@ -514,6 +572,7 @@ function DetailsStep({
             <span>{PLACEMENTS.find((p) => p.value === placement)?.label ?? "—"}</span>
             <span>{SIZE_PRESETS.find((s) => s.value === sizePreset)?.label ?? "—"}</span>
             <span>{freedom}% artist's interpretation</span>
+            {photoCount > 1 && <span>{photoCount} photos</span>}
           </div>
         </div>
       </Card>
