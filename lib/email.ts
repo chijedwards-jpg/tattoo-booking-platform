@@ -34,8 +34,10 @@ async function send(params: { to: string; subject: string; html: string }) {
   }
 }
 
-function fmtDateTime(d: Date): string {
-  return d.toLocaleString(undefined, {
+function fmtDateTime(d: Date, timeZone: string): string {
+  return d.toLocaleString("en-US", {
+    timeZone,
+    timeZoneName: "short",
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -98,10 +100,11 @@ export async function sendBookingConfirmationEmail(params: {
   type: "TATTOO" | "CONSULTATION";
   startTime: Date;
   endTime: Date;
+  timeZone: string;
   depositAmount?: number | null;
   depositInstructions?: string | null;
 }) {
-  const { to, artistName, type, startTime, endTime, depositAmount, depositInstructions } = params;
+  const { to, artistName, type, startTime, endTime, timeZone, depositAmount, depositInstructions } = params;
   const label = type === "TATTOO" ? "tattoo appointment" : "consultation";
   const calendarUrl = googleCalendarUrl({
     title: type === "TATTOO" ? "Tattoo appointment" : "Consultation",
@@ -123,7 +126,7 @@ export async function sendBookingConfirmationEmail(params: {
     subject: `You're booked with ${artistName}`,
     html: `
       <p>You're booked for a ${label} with ${artistName}.</p>
-      <p><strong>${fmtDateTime(startTime)}</strong></p>
+      <p><strong>${fmtDateTime(startTime, timeZone)}</strong></p>
       <p><a href="${calendarUrl}">Add to Google Calendar</a></p>
       ${depositBlock}
     `,

@@ -24,6 +24,11 @@ model Artist {
   profilePhoto String?
   location    String?
 
+  // IANA zone ("America/Denver") that weekly availability hours are written
+  // in. Null only for accounts that predate this field and haven't opened
+  // the dashboard since, which fills it in from their browser.
+  timeZone    String?
+
   // Subscription billing (Stripe) — artists pay the platform monthly.
   // stripeSubscriptionStatus mirrors Stripe's own status string verbatim
   // ("trialing", "active", "past_due", "canceled", etc.) rather than an

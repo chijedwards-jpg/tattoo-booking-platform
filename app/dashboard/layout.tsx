@@ -3,6 +3,7 @@ import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { hasActiveSubscriptionAccess } from "@/lib/stripe";
 import { SubscribeButton } from "./SubscribeButton";
+import { TimeZoneAutoDetect } from "./TimeZoneAutoDetect";
 import DashboardNav from "./DashboardNav";
 import LogoutButton from "./LogoutButton";
 
@@ -38,6 +39,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen bg-paper">
+      {!artist.timeZone && <TimeZoneAutoDetect />}
       <aside className="flex w-56 shrink-0 flex-col bg-ink px-4 py-6 text-paper">
         <div className="mb-8 px-2">
           <p className="font-display text-lg leading-tight">{artist.name}</p>

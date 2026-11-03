@@ -5,6 +5,7 @@ import { BOOKABLE_STATUSES } from "@/lib/bookingStatus";
 import { calculateDeposit } from "@/lib/pricingEngine";
 import { fetchGoogleBusyIntervals, createGoogleCalendarEvent } from "@/lib/googleOAuth";
 import { sendBookingConfirmationEmail } from "@/lib/email";
+import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 
 const BookingSchema = z.object({
   submissionId: z.string(),
@@ -140,6 +141,7 @@ export async function POST(req: NextRequest) {
       type,
       startTime,
       endTime,
+      timeZone: submission.artist.timeZone ?? DEFAULT_TIME_ZONE,
       depositAmount,
       depositInstructions: submission.artist.pricingConfig.depositInstructions,
     });

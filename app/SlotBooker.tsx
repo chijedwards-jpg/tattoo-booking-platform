@@ -8,6 +8,7 @@ import { googleCalendarUrl } from "@/lib/googleCalendar";
 export interface Slot {
   start: string;
   end: string;
+  timeZone?: string;
 }
 
 /**
@@ -27,6 +28,8 @@ export function SlotBooker({
   onBooked: (slot: Slot) => void;
 }) {
   const [slots, setSlots] = useState<Slot[] | null>(null);
+  // Times are shown in the artist's zone, since that's where the client is headed.
+  const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [booking, setBooking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +37,10 @@ export function SlotBooker({
     const typeParam = type === "CONSULTATION" ? "consultation" : "tattoo";
     fetch(`/api/availability?submissionId=${submissionId}&type=${typeParam}`)
       .then((res) => res.json())
-      .then((data) => setSlots(data.slots ?? []))
+      .then((data) => {
+        setTimeZone(data.timeZone);
+        setSlots(data.slots ?? []);
+      })
       .catch(() => setError("Couldn't load available times."));
   }, [submissionId, type]);
 
@@ -51,7 +57,7 @@ export function SlotBooker({
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Couldn't book that time.");
       }
-      onBooked(slot);
+      onBooked({ ...slot, timeZone });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -91,6 +97,7 @@ export function SlotBooker({
                   <span className="flex items-center gap-2">
                     <Calendar size={14} className="text-grey" />
                     {new Date(slot.start).toLocaleDateString(undefined, {
+                      timeZone,
                       weekday: "short",
                       month: "short",
                       day: "numeric",
@@ -99,6 +106,8 @@ export function SlotBooker({
                   <span className="flex items-center gap-2 text-grey">
                     <Clock size={14} />
                     {new Date(slot.start).toLocaleTimeString(undefined, {
+                      timeZone,
+                      timeZoneName: "short",
                       hour: "numeric",
                       minute: "2-digit",
                     })}
@@ -139,6 +148,8 @@ export function BookedConfirmation({
         <h1 className="font-display text-2xl leading-tight text-ink">You're booked</h1>
         <p className="mt-1 text-sm text-grey">
           {start.toLocaleString(undefined, {
+            timeZone: slot.timeZone,
+            timeZoneName: "short",
             weekday: "long",
             month: "long",
             day: "numeric",

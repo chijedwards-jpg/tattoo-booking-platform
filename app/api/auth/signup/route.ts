@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { hashPassword, createSession } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { isValidTimeZone } from "@/lib/timeZones";
 
 // Unauthenticated account creation — without a limit, a script could spam
 // accounts, squat on desirable slugs, or trigger a Stripe Checkout session
@@ -18,6 +19,7 @@ const SignupSchema = z.object({
     .string()
     .min(3)
     .regex(/^[a-z0-9-]+$/, "Use only lowercase letters, numbers, and dashes"),
+  timeZone: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { email, password, name, slug } = parsed.data;
+  const { email, password, name, slug, timeZone } = parsed.data;
 
   const existing = await prisma.artist.findFirst({
     where: { OR: [{ email }, { slug }] },
@@ -61,6 +63,8 @@ export async function POST(req: NextRequest) {
       passwordHash,
       name,
       slug,
+      // Comes from the browser; a bad value just leaves it for the dashboard to detect.
+      timeZone: timeZone && isValidTimeZone(timeZone) ? timeZone : null,
       pricingConfig: {
         create: { hourlyRate: 200, minimumPrice: 100, rangeSpreadPct: 0.15 },
       },

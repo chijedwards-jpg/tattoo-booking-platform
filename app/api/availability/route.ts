@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { calculateAvailableSlots } from "@/lib/availability";
 import { fetchGoogleBusyIntervals } from "@/lib/googleOAuth";
+import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 
 const SLOT_SEARCH_DAYS_AHEAD = 14; // must match calculateAvailableSlots' own default
 
@@ -52,6 +53,8 @@ export async function GET(req: NextRequest) {
   searchEnd.setDate(searchEnd.getDate() + SLOT_SEARCH_DAYS_AHEAD);
   const googleBusy = await fetchGoogleBusyIntervals(submission.artistId, now, searchEnd);
 
+  const timeZone = submission.artist.timeZone ?? DEFAULT_TIME_ZONE;
+
   const slots = calculateAvailableSlots({
     weeklyAvailability: windows,
     busy: [
@@ -59,10 +62,12 @@ export async function GET(req: NextRequest) {
       ...googleBusy,
     ],
     durationMins,
+    timeZone,
   });
 
   return NextResponse.json({
     durationMins,
+    timeZone,
     slots: slots.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() })),
   });
 }
