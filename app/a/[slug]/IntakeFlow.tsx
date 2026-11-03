@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
 import { PLACEMENTS, type Placement } from "@/lib/placements";
-import { fileToDataUrl } from "@/lib/files";
+import { fileToUploadDataUrl } from "@/lib/files";
 import { Badge, PrimaryButton, GhostButton, Chip, Card, StepDots } from "../../ui";
 
 const SIZE_PRESETS = [
@@ -64,7 +64,7 @@ export default function IntakeFlow({
     setSubmitError(null);
 
     try {
-      const dataUrl = await fileToDataUrl(inspirationFile);
+      const dataUrl = await fileToUploadDataUrl(inspirationFile);
 
       const res = await fetch("/api/submissions", {
         method: "POST",

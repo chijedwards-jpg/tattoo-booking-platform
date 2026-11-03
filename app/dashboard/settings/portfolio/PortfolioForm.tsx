@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2 } from "lucide-react";
-import { fileToDataUrl } from "@/lib/files";
+import { fileToUploadDataUrl } from "@/lib/files";
 
 interface PortfolioImage {
   id: string;
@@ -26,7 +26,7 @@ export function PortfolioForm({ images }: { images: PortfolioImage[] }) {
     setUploading(true);
     setError(null);
     try {
-      const imageDataUrl = await fileToDataUrl(file);
+      const imageDataUrl = await fileToUploadDataUrl(file);
       const res = await fetch("/api/settings/portfolio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
