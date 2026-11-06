@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { CALIBRATION_EXAMPLES, priceRangeOptions } from "@/lib/calibration";
-import { Card, Chip, Field, GhostButton, PrimaryButton, StepDots, inputClass } from "../../../../ui";
+import { CALIBRATION_EXAMPLES } from "@/lib/calibration";
+import { Card, Field, GhostButton, PrimaryButton, StepDots, inputClass } from "../../../../ui";
 
 interface Change {
   style: string;
@@ -15,29 +15,22 @@ interface Change {
 
 const EXAMPLE_COUNT = CALIBRATION_EXAMPLES.length;
 
-// What the artist has typed or picked for one example.
+// What the artist has typed for one example.
 interface Entry {
   hours: string;
-  choice: number | "custom" | null; // index into the range options
-  low: string; // custom range only
+  low: string;
   high: string;
 }
 
-const EMPTY_ENTRY: Entry = { hours: "", choice: null, low: "", high: "" };
+const EMPTY_ENTRY: Entry = { hours: "", low: "", high: "" };
 
 // A complete answer, or null if the example is skipped or half-filled.
-function resolveEntry(entry: Entry | undefined, rate: number): { hours: number; low: number; high: number } | null {
+function resolveEntry(entry: Entry | undefined): { hours: number; low: number; high: number } | null {
   if (!entry) return null;
   const hours = Number(entry.hours);
-  if (!(hours > 0)) return null;
-  if (entry.choice === "custom") {
-    const low = Number(entry.low);
-    const high = Number(entry.high);
-    return low > 0 && high >= low ? { hours, low, high } : null;
-  }
-  if (entry.choice === null) return null;
-  const range = priceRangeOptions(hours, rate)[entry.choice];
-  return range ? { hours, ...range } : null;
+  const low = Number(entry.low);
+  const high = Number(entry.high);
+  return hours > 0 && low > 0 && high >= low ? { hours, low, high } : null;
 }
 
 export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; welcome: boolean }) {
@@ -52,7 +45,7 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
   const rateValue = Number(rate);
   const rateValid = rateValue > 0;
   const answers = Object.fromEntries(
-    CALIBRATION_EXAMPLES.map((e) => [e.id, resolveEntry(entries[e.id], rateValue)])
+    CALIBRATION_EXAMPLES.map((e) => [e.id, resolveEntry(entries[e.id])])
   );
   const pricedCount = Object.values(answers).filter(Boolean).length;
 
@@ -184,8 +177,8 @@ function ExampleStep({
 }) {
   const ex = CALIBRATION_EXAMPLES[index];
   const hours = Number(entry.hours);
-  const options = priceRangeOptions(hours, hourlyRate);
-  const started = entry.hours !== "" || entry.choice !== null;
+  const started = entry.hours !== "" || entry.low !== "" || entry.high !== "";
+  const highBelowLow = entry.low !== "" && entry.high !== "" && Number(entry.high) < Number(entry.low);
 
   function advance() {
     if (isLast) onFinish();
@@ -248,13 +241,7 @@ function ExampleStep({
               min="0.5"
               step="0.5"
               value={entry.hours}
-              // New hours mean new range choices, so an earlier pick no longer applies.
-              onChange={(e) =>
-                onChange({
-                  hours: e.target.value,
-                  choice: entry.choice === "custom" && e.target.value !== "" ? "custom" : null,
-                })
-              }
+              onChange={(e) => onChange({ hours: e.target.value })}
               className={inputClass("pr-12")}
               autoFocus
             />
@@ -262,43 +249,26 @@ function ExampleStep({
           </div>
         </Field>
 
-        {options.length > 0 && (
-          <div className="mt-5">
-            <p className="font-mono text-[11px] uppercase tracking-wide text-grey">What would you charge?</p>
-            <p className="mt-0.5 text-xs text-grey">
-              {money(hours * hourlyRate)} is {hours} {hours === 1 ? "hour" : "hours"} at your rate. Pick the range
-              you&apos;d quote.
-            </p>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {options.map((o, i) => (
-                <Chip key={i} active={entry.choice === i} onClick={() => onChange({ choice: i })}>
-                  <span className="block text-center font-mono">
-                    {money(o.low)}–{money(o.high)}
-                  </span>
-                </Chip>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => onChange({ choice: "custom" })}
-              className={`mt-2 text-sm underline ${entry.choice === "custom" ? "text-ink" : "text-grey hover:text-ink"}`}
-            >
-              None of these, enter my own range
-            </button>
-            {entry.choice === "custom" && (
-              <div className="mt-2 flex items-center gap-2">
-                <MoneyInput value={entry.low} onChange={(v) => onChange({ low: v })} label="Low end" />
-                <span className="text-grey">–</span>
-                <MoneyInput value={entry.high} onChange={(v) => onChange({ high: v })} label="High end" />
-              </div>
-            )}
+        <div className="mt-5">
+          <p className="font-mono text-[11px] uppercase tracking-wide text-grey">What price range would you quote?</p>
+          <p className="mt-0.5 text-xs text-grey">
+            {hours > 0
+              ? `For reference, ${hours} ${hours === 1 ? "hour" : "hours"} at your rate is ${money(hours * hourlyRate)}.`
+              : "Your low and high price for the finished piece."}
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <MoneyInput value={entry.low} onChange={(v) => onChange({ low: v })} label="Low" />
+            <span className="text-grey">–</span>
+            <MoneyInput value={entry.high} onChange={(v) => onChange({ high: v })} label="High" />
           </div>
-        )}
+        </div>
 
         {error && <p className="mt-3 text-xs text-ink-red">{error}</p>}
         {started && !answered && (
           <p className="mt-3 text-xs text-grey">
-            {entry.choice === "custom" ? "Enter a low and high price to continue." : "Pick a range to continue."}
+            {highBelowLow
+              ? "The high price should be at least the low price."
+              : "Fill in the hours and both prices to continue, or clear them to skip this style."}
           </p>
         )}
         {isLast && !canFinish && (
@@ -351,7 +321,7 @@ function Results({ changes, hourlyRate }: { changes: Change[]; hourlyRate: numbe
     <div>
       <h1 className="font-display text-3xl text-ink">Your prices are set</h1>
       <p className="mt-1 text-sm text-grey">
-        Hourly rate ${hourlyRate.toFixed(0)}. Each style's multiplier now matches the middle of the range you picked for its example, so a client
+        Hourly rate ${hourlyRate.toFixed(0)}. Each style's multiplier now matches the middle of the range you gave for its example, so a client
         asking for something similar gets an estimate close to what you'd quote.
       </p>
 
