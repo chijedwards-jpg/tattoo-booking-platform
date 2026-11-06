@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { CALIBRATION_EXAMPLES } from "@/lib/calibration";
-import { Card, Field, GhostButton, PrimaryButton, StepDots, inputClass } from "../../../../ui";
+import { CALIBRATION_EXAMPLES, priceRangeOptions } from "@/lib/calibration";
+import { Card, Chip, Field, GhostButton, PrimaryButton, StepDots, inputClass } from "../../../../ui";
 
 interface Change {
   style: string;
@@ -15,18 +15,46 @@ interface Change {
 
 const EXAMPLE_COUNT = CALIBRATION_EXAMPLES.length;
 
+// What the artist has typed or picked for one example.
+interface Entry {
+  hours: string;
+  choice: number | "custom" | null; // index into the range options
+  low: string; // custom range only
+  high: string;
+}
+
+const EMPTY_ENTRY: Entry = { hours: "", choice: null, low: "", high: "" };
+
+// A complete answer, or null if the example is skipped or half-filled.
+function resolveEntry(entry: Entry | undefined, rate: number): { hours: number; low: number; high: number } | null {
+  if (!entry) return null;
+  const hours = Number(entry.hours);
+  if (!(hours > 0)) return null;
+  if (entry.choice === "custom") {
+    const low = Number(entry.low);
+    const high = Number(entry.high);
+    return low > 0 && high >= low ? { hours, low, high } : null;
+  }
+  if (entry.choice === null) return null;
+  const range = priceRangeOptions(hours, rate)[entry.choice];
+  return range ? { hours, ...range } : null;
+}
+
 export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; welcome: boolean }) {
   // step 0 = hourly rate, 1..EXAMPLE_COUNT = one example each
   const [step, setStep] = useState(0);
   const [rate, setRate] = useState(String(hourlyRate));
-  const [prices, setPrices] = useState<Record<string, string>>({});
+  const [entries, setEntries] = useState<Record<string, Entry>>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [changes, setChanges] = useState<Change[] | null>(null);
 
   const rateValue = Number(rate);
   const rateValid = rateValue > 0;
-  const pricedCount = CALIBRATION_EXAMPLES.filter((e) => Number(prices[e.id]) > 0).length;
+  const answers = Object.fromEntries(
+    CALIBRATION_EXAMPLES.map((e) => [e.id, resolveEntry(entries[e.id], rateValue)])
+  );
+  const pricedCount = Object.values(answers).filter(Boolean).length;
 
   async function submit() {
     setSaving(true);
@@ -37,9 +65,7 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           hourlyRate: rateValue,
-          prices: Object.fromEntries(
-            CALIBRATION_EXAMPLES.map((e) => [e.id, Number(prices[e.id]) > 0 ? Number(prices[e.id]) : null])
-          ),
+          answers,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -64,7 +90,8 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
     <div>
       <h1 className="font-display text-3xl text-ink">{welcome ? "Teach us your prices" : "Calibrate your prices"}</h1>
       <p className="mt-1 text-sm text-grey">
-        Price {EXAMPLE_COUNT} example tattoos the way you'd quote them in your shop. We use your answers to tune each
+        For {EXAMPLE_COUNT} example tattoos, tell us how long each would take you and the price range you&apos;d quote.
+        We use your answers to tune each
         style, so the estimates clients see sound like you. Takes about two minutes, and you can change anything later in
         Styles & Time.
       </p>
@@ -100,8 +127,15 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
         <ExampleStep
           key={step}
           index={step - 1}
-          value={prices[CALIBRATION_EXAMPLES[step - 1].id] ?? ""}
-          onChange={(v) => setPrices((p) => ({ ...p, [CALIBRATION_EXAMPLES[step - 1].id]: v }))}
+          entry={entries[CALIBRATION_EXAMPLES[step - 1].id] ?? EMPTY_ENTRY}
+          onChange={(patch) =>
+            setEntries((all) => {
+              const id = CALIBRATION_EXAMPLES[step - 1].id;
+              return { ...all, [id]: { ...(all[id] ?? EMPTY_ENTRY), ...patch } };
+            })
+          }
+          hourlyRate={rateValue}
+          answered={answers[CALIBRATION_EXAMPLES[step - 1].id] !== null}
           onBack={() => setStep(step - 1)}
           onNext={() => setStep(step + 1)}
           onFinish={submit}
@@ -117,10 +151,16 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
   );
 }
 
+function money(n: number): string {
+  return `$${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
 function ExampleStep({
   index,
-  value,
+  entry,
   onChange,
+  hourlyRate,
+  answered,
   onBack,
   onNext,
   onFinish,
@@ -130,8 +170,10 @@ function ExampleStep({
   error,
 }: {
   index: number;
-  value: string;
-  onChange: (v: string) => void;
+  entry: Entry;
+  onChange: (patch: Partial<Entry>) => void;
+  hourlyRate: number;
+  answered: boolean;
   onBack: () => void;
   onNext: () => void;
   onFinish: () => void;
@@ -141,7 +183,9 @@ function ExampleStep({
   error: string | null;
 }) {
   const ex = CALIBRATION_EXAMPLES[index];
-  const hasPrice = Number(value) > 0;
+  const hours = Number(entry.hours);
+  const options = priceRangeOptions(hours, hourlyRate);
+  const started = entry.hours !== "" || entry.choice !== null;
 
   function advance() {
     if (isLast) onFinish();
@@ -191,26 +235,72 @@ function ExampleStep({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (started && !answered) return; // half-filled: finish it or clear it
           if (!isLast || canFinish) advance();
         }}
         className="mt-5"
       >
-        <Field label="What would you charge for this?" hint="Your full price for the finished piece. Leave it blank if you don't do this style.">
+        <Field label="How long would this take you?" hint="Hours of tattooing for the finished piece. Leave it blank if you don't do this style.">
           <div className="relative w-40">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-grey">$</span>
             <input
               type="number"
               inputMode="decimal"
-              min="1"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              className={inputClass("pl-7")}
+              min="0.5"
+              step="0.5"
+              value={entry.hours}
+              // New hours mean new range choices, so an earlier pick no longer applies.
+              onChange={(e) =>
+                onChange({
+                  hours: e.target.value,
+                  choice: entry.choice === "custom" && e.target.value !== "" ? "custom" : null,
+                })
+              }
+              className={inputClass("pr-12")}
               autoFocus
             />
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-grey">hrs</span>
           </div>
         </Field>
 
+        {options.length > 0 && (
+          <div className="mt-5">
+            <p className="font-mono text-[11px] uppercase tracking-wide text-grey">What would you charge?</p>
+            <p className="mt-0.5 text-xs text-grey">
+              {money(hours * hourlyRate)} is {hours} {hours === 1 ? "hour" : "hours"} at your rate. Pick the range
+              you&apos;d quote.
+            </p>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {options.map((o, i) => (
+                <Chip key={i} active={entry.choice === i} onClick={() => onChange({ choice: i })}>
+                  <span className="block text-center font-mono">
+                    {money(o.low)}–{money(o.high)}
+                  </span>
+                </Chip>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange({ choice: "custom" })}
+              className={`mt-2 text-sm underline ${entry.choice === "custom" ? "text-ink" : "text-grey hover:text-ink"}`}
+            >
+              None of these, enter my own range
+            </button>
+            {entry.choice === "custom" && (
+              <div className="mt-2 flex items-center gap-2">
+                <MoneyInput value={entry.low} onChange={(v) => onChange({ low: v })} label="Low end" />
+                <span className="text-grey">–</span>
+                <MoneyInput value={entry.high} onChange={(v) => onChange({ high: v })} label="High end" />
+              </div>
+            )}
+          </div>
+        )}
+
         {error && <p className="mt-3 text-xs text-ink-red">{error}</p>}
+        {started && !answered && (
+          <p className="mt-3 text-xs text-grey">
+            {entry.choice === "custom" ? "Enter a low and high price to continue." : "Pick a range to continue."}
+          </p>
+        )}
         {isLast && !canFinish && (
           <p className="mt-3 text-xs text-grey">Price at least one example to finish, or skip for now.</p>
         )}
@@ -220,17 +310,35 @@ function ExampleStep({
             <ArrowLeft size={15} /> Back
           </GhostButton>
           {isLast ? (
-            <PrimaryButton type="submit" disabled={!canFinish || saving}>
+            <PrimaryButton type="submit" disabled={!canFinish || saving || (started && !answered)}>
               {saving ? "Saving…" : "Finish"} <Check size={15} />
             </PrimaryButton>
           ) : (
-            <PrimaryButton type="submit">
-              {hasPrice ? "Next" : "I don't do this style"} <ArrowRight size={15} />
+            <PrimaryButton type="submit" disabled={started && !answered}>
+              {started ? "Next" : "I don't do this style"} <ArrowRight size={15} />
             </PrimaryButton>
           )}
         </div>
       </form>
     </Card>
+  );
+}
+
+function MoneyInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  return (
+    <div className="relative w-32">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-grey">$</span>
+      <input
+        type="number"
+        inputMode="decimal"
+        min="1"
+        aria-label={label}
+        placeholder={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputClass("pl-7")}
+      />
+    </div>
   );
 }
 
@@ -243,7 +351,7 @@ function Results({ changes, hourlyRate }: { changes: Change[]; hourlyRate: numbe
     <div>
       <h1 className="font-display text-3xl text-ink">Your prices are set</h1>
       <p className="mt-1 text-sm text-grey">
-        Hourly rate ${hourlyRate.toFixed(0)}. Each style's multiplier now matches how you priced its example, so a client
+        Hourly rate ${hourlyRate.toFixed(0)}. Each style's multiplier now matches the middle of the range you picked for its example, so a client
         asking for something similar gets an estimate close to what you'd quote.
       </p>
 

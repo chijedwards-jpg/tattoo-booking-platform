@@ -1,6 +1,6 @@
 import {
   CALIBRATION_EXAMPLES, STYLE_FOLLOWS, MIN_MULTIPLIER, MAX_MULTIPLIER,
-  multiplierFromPrice, calibrateStyles,
+  multiplierFromPrice, calibrateStyles, priceRangeOptions, rangeMidpoint,
 } from "./calibration";
 import { VALID_STYLES } from "./aiAnalysis";
 import { calculateEstimate } from "./pricingEngine";
@@ -43,5 +43,14 @@ assert(partial.some((s) => s.style === "Fine Line"), "Fine Line follows Minimali
 const covered = new Set([...CALIBRATION_EXAMPLES.map((e) => e.style), ...Object.keys(STYLE_FOLLOWS)]);
 assert(VALID_STYLES.every((s) => s === "Other" || covered.has(s)), "every detectable style except Other is covered");
 assert(CALIBRATION_EXAMPLES.every((e) => VALID_STYLES.includes(e.style)), "example styles are ones the analyzer detects");
+
+const options = priceRangeOptions(3, 200);
+assert(options.length === 6, "six range choices");
+assert(options.some((o) => o.low <= 600 && o.high >= 600), "one choice brackets hours x rate");
+assert(options.every((o, i) => i === 0 || o.low === options[i - 1].high), "choices are contiguous");
+const tiny = priceRangeOptions(0.5, 60);
+assert(tiny.every((o) => o.high > o.low), "small prices never give an empty range");
+assert(priceRangeOptions(0, 200).length === 0, "no hours, no choices");
+assert(rangeMidpoint({ low: 500, high: 700 }) === 600, "a range calibrates to its midpoint");
 
 console.log("\nAll calibration tests passed.");

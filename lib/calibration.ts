@@ -131,6 +131,43 @@ export function multiplierFromPrice(price: number, baselineHours: number, hourly
   return Math.round(clamped * 20) / 20;
 }
 
+export interface PriceRange {
+  low: number;
+  high: number;
+}
+
+// Range edges as multiples of the artist's own hours x rate. The middle
+// option brackets exactly what their stated time would cost at their rate;
+// the others cover charging under it (quick work, simple pieces) or over
+// it (a premium for the style).
+const RANGE_EDGES = [0.65, 0.8, 0.93, 1.07, 1.2, 1.35, 1.55];
+
+function roundMoney(n: number, base: number): number {
+  const step = base < 200 ? 5 : base < 600 ? 10 : base < 2000 ? 25 : 50;
+  return Math.round(n / step) * step;
+}
+
+/**
+ * The price ranges an artist picks from for one example, once they've said
+ * how long it would take them. Built around their hours x hourly rate so
+ * the choices are already in their ballpark.
+ */
+export function priceRangeOptions(hours: number, hourlyRate: number): PriceRange[] {
+  if (!(hours > 0) || !(hourlyRate > 0)) return [];
+  const base = hours * hourlyRate;
+  const edges = RANGE_EDGES.map((e) => roundMoney(base * e, base));
+  const out: PriceRange[] = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    if (edges[i + 1] > edges[i]) out.push({ low: edges[i], high: edges[i + 1] });
+  }
+  return out;
+}
+
+/** The price a range calibrates to: its midpoint. */
+export function rangeMidpoint(range: PriceRange): number {
+  return (range.low + range.high) / 2;
+}
+
 export interface CalibratedStyle {
   style: string;
   multiplier: number;

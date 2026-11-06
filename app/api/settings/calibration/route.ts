@@ -2,14 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
-import { CALIBRATION_EXAMPLES, calibrateStyles } from "@/lib/calibration";
+import { CALIBRATION_EXAMPLES, calibrateStyles, rangeMidpoint } from "@/lib/calibration";
 
 const exampleIds = CALIBRATION_EXAMPLES.map((e) => e.id) as [string, ...string[]];
 
+const AnswerSchema = z
+  .object({
+    hours: z.number().positive().max(100),
+    low: z.number().positive().max(100000),
+    high: z.number().positive().max(100000),
+  })
+  .refine((a) => a.high >= a.low);
+
 const CalibrationSchema = z.object({
   hourlyRate: z.number().positive().max(10000),
-  // Blank examples are left out or null; they change nothing.
-  prices: z.record(z.enum(exampleIds), z.number().positive().max(100000).nullable()),
+  // Skipped examples are left out or null; they change nothing.
+  answers: z.record(z.enum(exampleIds), AnswerSchema.nullable()),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,7 +31,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Enter an hourly rate and at least one price." }, { status: 400 });
   }
 
-  const { hourlyRate, prices } = parsed.data;
+  const { hourlyRate, answers } = parsed.data;
+  // The artist's hours already shaped the ranges they picked from, so the
+  // midpoint of their chosen range is what each style calibrates to.
+  const prices = Object.fromEntries(
+    Object.entries(answers).map(([id, a]) => [id, a ? rangeMidpoint(a) : null])
+  );
   const calibrated = calibrateStyles(prices, hourlyRate);
   if (calibrated.length === 0) {
     return NextResponse.json({ error: "Price at least one example." }, { status: 400 });
