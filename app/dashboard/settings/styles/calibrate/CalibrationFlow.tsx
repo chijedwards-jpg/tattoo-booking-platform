@@ -24,16 +24,32 @@ interface Entry {
 
 const EMPTY_ENTRY: Entry = { hours: "", low: "", high: "" };
 
+type Mode = "TIME" | "PRICE";
+
 // A complete answer, or null if the example is skipped or half-filled.
-function resolveEntry(entry: Entry | undefined): { hours: number; low: number; high: number } | null {
+// Time mode only asks for hours; Price mode also needs the quoted range.
+function resolveEntry(
+  entry: Entry | undefined,
+  mode: Mode
+): { hours: number; low?: number; high?: number } | null {
   if (!entry) return null;
   const hours = Number(entry.hours);
+  if (!(hours > 0)) return null;
+  if (mode === "TIME") return { hours };
   const low = Number(entry.low);
   const high = Number(entry.high);
-  return hours > 0 && low > 0 && high >= low ? { hours, low, high } : null;
+  return low > 0 && high >= low ? { hours, low, high } : null;
 }
 
-export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; welcome: boolean }) {
+export function CalibrationFlow({
+  hourlyRate,
+  mode,
+  welcome,
+}: {
+  hourlyRate: number;
+  mode: Mode;
+  welcome: boolean;
+}) {
   // step 0 = hourly rate, 1..EXAMPLE_COUNT = one example each
   const [step, setStep] = useState(0);
   const [rate, setRate] = useState(String(hourlyRate));
@@ -45,7 +61,7 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
   const rateValue = Number(rate);
   const rateValid = rateValue > 0;
   const answers = Object.fromEntries(
-    CALIBRATION_EXAMPLES.map((e) => [e.id, resolveEntry(entries[e.id])])
+    CALIBRATION_EXAMPLES.map((e) => [e.id, resolveEntry(entries[e.id], mode)])
   );
   const pricedCount = Object.values(answers).filter(Boolean).length;
 
@@ -71,7 +87,7 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
     }
   }
 
-  if (changes) return <Results changes={changes} hourlyRate={rateValue} />;
+  if (changes) return <Results changes={changes} hourlyRate={rateValue} mode={mode} />;
 
   const skipLink = (
     <Link href={welcome ? "/dashboard" : "/dashboard/settings/styles"} className="text-sm text-grey underline hover:text-ink">
@@ -83,10 +99,11 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
     <div>
       <h1 className="font-display text-3xl text-ink">{welcome ? "Teach us your prices" : "Calibrate your prices"}</h1>
       <p className="mt-1 text-sm text-grey">
-        For {EXAMPLE_COUNT} example tattoos, tell us how long each would take you and the price range you&apos;d quote.
-        We use your answers to tune each
-        style, so the estimates clients see sound like you. Takes about two minutes, and you can change anything later in
-        Styles & Time.
+        {mode === "PRICE"
+          ? `For ${EXAMPLE_COUNT} example tattoos, tell us how long each would take you and the price range you'd quote. `
+          : `For ${EXAMPLE_COUNT} example tattoos, tell us how long each would take you. `}
+        We use your answers to tune each style, so the estimates clients see sound like you. Takes about two minutes, and
+        you can change anything later in Styles & Time.
       </p>
 
       <div className="mt-6">
@@ -128,6 +145,7 @@ export function CalibrationFlow({ hourlyRate, welcome }: { hourlyRate: number; w
             })
           }
           hourlyRate={rateValue}
+          mode={mode}
           answered={answers[CALIBRATION_EXAMPLES[step - 1].id] !== null}
           onBack={() => setStep(step - 1)}
           onNext={() => setStep(step + 1)}
@@ -153,6 +171,7 @@ function ExampleStep({
   entry,
   onChange,
   hourlyRate,
+  mode,
   answered,
   onBack,
   onNext,
@@ -166,6 +185,7 @@ function ExampleStep({
   entry: Entry;
   onChange: (patch: Partial<Entry>) => void;
   hourlyRate: number;
+  mode: Mode;
   answered: boolean;
   onBack: () => void;
   onNext: () => void;
@@ -177,7 +197,8 @@ function ExampleStep({
 }) {
   const ex = CALIBRATION_EXAMPLES[index];
   const hours = Number(entry.hours);
-  const started = entry.hours !== "" || entry.low !== "" || entry.high !== "";
+  const asksPrice = mode === "PRICE";
+  const started = entry.hours !== "" || (asksPrice && (entry.low !== "" || entry.high !== ""));
   const highBelowLow = entry.low !== "" && entry.high !== "" && Number(entry.high) < Number(entry.low);
 
   function advance() {
@@ -249,6 +270,7 @@ function ExampleStep({
           </div>
         </Field>
 
+        {asksPrice && (
         <div className="mt-5">
           <p className="font-mono text-[11px] uppercase tracking-wide text-grey">What price range would you quote?</p>
           <p className="mt-0.5 text-xs text-grey">
@@ -262,17 +284,18 @@ function ExampleStep({
             <MoneyInput value={entry.high} onChange={(v) => onChange({ high: v })} label="High" />
           </div>
         </div>
+        )}
 
         {error && <p className="mt-3 text-xs text-ink-red">{error}</p>}
         {started && !answered && (
           <p className="mt-3 text-xs text-grey">
             {highBelowLow
               ? "The high price should be at least the low price."
-              : "Fill in the hours and both prices to continue, or clear them to skip this style."}
+              : "Fill in the hours and both prices to continue, or clear everything to skip this style."}
           </p>
         )}
         {isLast && !canFinish && (
-          <p className="mt-3 text-xs text-grey">Price at least one example to finish, or skip for now.</p>
+          <p className="mt-3 text-xs text-grey">Answer at least one example to finish, or skip for now.</p>
         )}
 
         <div className="mt-6 flex items-center justify-between gap-3">
@@ -312,7 +335,7 @@ function MoneyInput({ value, onChange, label }: { value: string; onChange: (v: s
   );
 }
 
-function Results({ changes, hourlyRate }: { changes: Change[]; hourlyRate: number }) {
+function Results({ changes, hourlyRate, mode }: { changes: Change[]; hourlyRate: number; mode: Mode }) {
   const exampleStyles = new Set(CALIBRATION_EXAMPLES.map((e) => e.style.toLowerCase()));
   const main = changes.filter((c) => exampleStyles.has(c.style.toLowerCase()));
   const followers = changes.filter((c) => !exampleStyles.has(c.style.toLowerCase()));
@@ -321,8 +344,10 @@ function Results({ changes, hourlyRate }: { changes: Change[]; hourlyRate: numbe
     <div>
       <h1 className="font-display text-3xl text-ink">Your prices are set</h1>
       <p className="mt-1 text-sm text-grey">
-        Hourly rate ${hourlyRate.toFixed(0)}. Each style's multiplier now matches the middle of the range you gave for its example, so a client
-        asking for something similar gets an estimate close to what you'd quote.
+        Hourly rate ${hourlyRate.toFixed(0)}.{" "}
+        {mode === "PRICE"
+          ? "Each style's multiplier is now how your quote compares with your own hours at that rate, so a style you charge more for costs more, without changing how long a slot takes."
+          : "Each style's multiplier is now how your hours compare with our estimate, so booked slots match how long you actually take, and prices follow your hours at that rate."}
       </p>
 
       <Card className="mt-6">

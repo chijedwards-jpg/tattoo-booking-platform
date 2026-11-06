@@ -1,6 +1,7 @@
 /**
- * Price calibration: a new artist prices five example tattoos, one per
- * core style, and each price sets that style's multiplier.
+ * Price calibration: a new artist says how long five example tattoos would
+ * take them (and, in Price mode, what they'd charge), one per core style,
+ * and each answer sets that style's multiplier.
  *
  * Pure logic, no DB imports, same as pricingEngine.ts. The example photos
  * live in public/calibration/ and each one's baseline hours were read once
@@ -117,18 +118,44 @@ export const STYLE_FOLLOWS: Record<string, string> = {
 export const MIN_MULTIPLIER = 0.5;
 export const MAX_MULTIPLIER = 2.5;
 
-/**
- * price = baseline hours x hourly rate x multiplier, solved for the
- * multiplier. The same formula holds in both TIME and PRICE mode, since
- * either way the estimate before the minimum-price floor is
- * hours x rate x multiplier. Rounded to the nearest 0.05 so it reads
- * cleanly in settings.
- */
-export function multiplierFromPrice(price: number, baselineHours: number, hourlyRate: number): number {
-  if (!(price > 0) || !(baselineHours > 0) || !(hourlyRate > 0)) return 1;
-  const raw = price / (baselineHours * hourlyRate);
+// Clamped, and rounded to the nearest 0.05 so it reads cleanly in settings.
+function tidy(raw: number): number {
   const clamped = Math.min(MAX_MULTIPLIER, Math.max(MIN_MULTIPLIER, raw));
   return Math.round(clamped * 20) / 20;
+}
+
+export type CalibrationMode = "TIME" | "PRICE";
+
+export interface CalibrationAnswer {
+  hours: number; // how long the artist says the example would take them
+  price: number | null; // midpoint of their quoted range; Price mode only
+}
+
+/**
+ * One example's multiplier, built from the artist's own hours rather than
+ * the analyzer's, so their speed and their pricing don't get mixed up:
+ *
+ *  - PRICE mode keeps the analyzer's hours for every request, so the
+ *    multiplier is only the artist's premium or discount for the style:
+ *    their price over what their own hours cost at their rate.
+ *  - TIME mode prices everything at hours x rate, so the multiplier is the
+ *    artist's speed for the style: their hours over the analyzer's.
+ *
+ * (Comparing their price to the *analyzer's* hours instead would read
+ * "faster than the analyzer" as "charges less", and halve every estimate.)
+ */
+export function multiplierFromAnswer(
+  answer: CalibrationAnswer,
+  baselineHours: number,
+  hourlyRate: number,
+  mode: CalibrationMode
+): number | null {
+  if (!(answer.hours > 0)) return null;
+  if (mode === "TIME") {
+    return baselineHours > 0 ? tidy(answer.hours / baselineHours) : null;
+  }
+  if (answer.price == null || !(answer.price > 0) || !(hourlyRate > 0)) return null;
+  return tidy(answer.price / (answer.hours * hourlyRate));
 }
 
 export interface PriceRange {
@@ -153,14 +180,16 @@ export interface CalibratedStyle {
  * that follow them.
  */
 export function calibrateStyles(
-  prices: Record<string, number | null | undefined>,
-  hourlyRate: number
+  answers: Record<string, CalibrationAnswer | null | undefined>,
+  hourlyRate: number,
+  mode: CalibrationMode
 ): CalibratedStyle[] {
   const byExample = new Map<string, number>();
   for (const ex of CALIBRATION_EXAMPLES) {
-    const price = prices[ex.id];
-    if (price == null || !(price > 0)) continue;
-    byExample.set(ex.id, multiplierFromPrice(price, ex.baselineHours, hourlyRate));
+    const answer = answers[ex.id];
+    if (!answer) continue;
+    const m = multiplierFromAnswer(answer, ex.baselineHours, hourlyRate, mode);
+    if (m !== null) byExample.set(ex.id, m);
   }
 
   const result: CalibratedStyle[] = [];

@@ -11,13 +11,17 @@ export default async function CalibratePage({ searchParams }: { searchParams: { 
 
   const pricingConfig = await prisma.pricingConfig.findUnique({
     where: { artistId },
-    select: { hourlyRate: true },
+    select: { hourlyRate: true, styleMultiplierMode: true },
   });
   if (!pricingConfig) redirect("/login");
 
   return (
     <div className="mx-auto max-w-2xl">
-      <CalibrationFlow hourlyRate={pricingConfig.hourlyRate} welcome={searchParams.welcome === "1"} />
+      <CalibrationFlow
+        hourlyRate={pricingConfig.hourlyRate}
+        mode={pricingConfig.styleMultiplierMode}
+        welcome={searchParams.welcome === "1"}
+      />
     </div>
   );
 }

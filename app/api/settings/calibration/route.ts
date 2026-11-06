@@ -6,13 +6,14 @@ import { CALIBRATION_EXAMPLES, calibrateStyles, rangeMidpoint } from "@/lib/cali
 
 const exampleIds = CALIBRATION_EXAMPLES.map((e) => e.id) as [string, ...string[]];
 
+// low/high are only asked for in Price mode; Time mode sends hours alone.
 const AnswerSchema = z
   .object({
     hours: z.number().positive().max(100),
-    low: z.number().positive().max(100000),
-    high: z.number().positive().max(100000),
+    low: z.number().positive().max(100000).optional(),
+    high: z.number().positive().max(100000).optional(),
   })
-  .refine((a) => a.high >= a.low);
+  .refine((a) => (a.low === undefined) === (a.high === undefined) && (a.low === undefined || a.high! >= a.low));
 
 const CalibrationSchema = z.object({
   hourlyRate: z.number().positive().max(10000),
@@ -28,18 +29,36 @@ export async function POST(req: NextRequest) {
 
   const parsed = CalibrationSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Enter an hourly rate and at least one price." }, { status: 400 });
+    return NextResponse.json({ error: "Enter an hourly rate and answer at least one example." }, { status: 400 });
   }
 
+  const pricingConfig = await prisma.pricingConfig.findUnique({
+    where: { artistId },
+    select: { styleMultiplierMode: true },
+  });
+  if (!pricingConfig) {
+    return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+  }
+  const mode = pricingConfig.styleMultiplierMode;
+
   const { hourlyRate, answers } = parsed.data;
-  // The artist's hours already shaped the ranges they picked from, so the
-  // midpoint of their chosen range is what each style calibrates to.
-  const prices = Object.fromEntries(
-    Object.entries(answers).map(([id, a]) => [id, a ? rangeMidpoint(a) : null])
+  const calibrated = calibrateStyles(
+    Object.fromEntries(
+      Object.entries(answers).map(([id, a]) => [
+        id,
+        a
+          ? { hours: a.hours, price: a.low !== undefined && a.high !== undefined ? rangeMidpoint({ low: a.low, high: a.high }) : null }
+          : null,
+      ])
+    ),
+    hourlyRate,
+    mode
   );
-  const calibrated = calibrateStyles(prices, hourlyRate);
   if (calibrated.length === 0) {
-    return NextResponse.json({ error: "Price at least one example." }, { status: 400 });
+    return NextResponse.json(
+      { error: mode === "PRICE" ? "Give hours and a price range for at least one example." : "Give hours for at least one example." },
+      { status: 400 }
+    );
   }
 
   const existing = await prisma.tattooStyle.findMany({ where: { artistId } });
