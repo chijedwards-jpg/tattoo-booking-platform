@@ -23,6 +23,10 @@ export async function GET(req: NextRequest) {
 
   const subscription = checkoutSession.subscription;
   if (subscription && typeof subscription !== "string" && typeof checkoutSession.customer === "string") {
+    const before = await prisma.artist.findUnique({
+      where: { id: artistId },
+      select: { stripeSubscriptionId: true },
+    });
     await prisma.artist.update({
       where: { id: artistId },
       data: {
@@ -31,6 +35,13 @@ export async function GET(req: NextRequest) {
         stripeSubscriptionStatus: subscription.status,
       },
     });
+
+    // First subscription ever: a brand-new artist, so walk them through
+    // pricing the example tattoos before they land on an empty dashboard.
+    // Resubscribing artists already have their prices set up.
+    if (!before?.stripeSubscriptionId) {
+      return NextResponse.redirect(new URL("/dashboard/settings/styles/calibrate?welcome=1", req.url));
+    }
   }
 
   return NextResponse.redirect(new URL("/dashboard", req.url));

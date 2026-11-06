@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { StylesForm } from "../StylesAndRestrictions";
 import { StyleMultiplierModeToggle } from "../StyleMultiplierModeToggle";
 
@@ -32,6 +34,18 @@ export default async function StylesSettingsPage() {
         </div>
         <StyleMultiplierModeToggle mode={mode} />
       </div>
+      <Link
+        href="/dashboard/settings/styles/calibrate"
+        className="mt-6 flex items-center justify-between gap-4 rounded-2xl border border-line bg-card p-5 transition-colors hover:border-ink/40"
+      >
+        <div>
+          <p className="font-medium text-ink">Calibrate from examples</p>
+          <p className="mt-0.5 text-sm text-grey">
+            Price five example tattoos and we&apos;ll set these multipliers to match how you quote.
+          </p>
+        </div>
+        <ChevronRight size={18} className="shrink-0 text-grey" />
+      </Link>
       <div className="mt-6">
         <StylesForm styles={styles} mode={mode} />
       </div>
