@@ -14,7 +14,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = UpdateSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

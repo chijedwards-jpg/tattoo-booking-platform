@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = CreateStyleSchema.safeParse(body);
 
   if (!parsed.success) {

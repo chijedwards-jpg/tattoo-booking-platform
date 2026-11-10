@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     );
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = BookingSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Please check your details and try again." }, { status: 400 });

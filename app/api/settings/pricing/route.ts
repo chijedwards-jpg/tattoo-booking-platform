@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
-  const body = await req.json();
+  const body = await req.json().catch(() => null);
   const parsed = PricingSchema.safeParse(body);
 
   if (!parsed.success) {
