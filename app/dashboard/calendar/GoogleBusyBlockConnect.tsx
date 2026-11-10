@@ -8,9 +8,12 @@ import { GhostButton } from "../../ui";
 export default function GoogleBusyBlockConnect({
   connected,
   configured,
+  broken = false,
 }: {
   connected: boolean;
   configured: boolean;
+  /** Connected, but Google no longer accepts the saved login. */
+  broken?: boolean;
 }) {
   const router = useRouter();
   const [disconnecting, setDisconnecting] = useState(false);
@@ -35,6 +38,24 @@ export default function GoogleBusyBlockConnect({
       <p className="mt-4 text-sm text-grey">
         Not available yet — this server hasn't been set up with Google OAuth credentials.
       </p>
+    );
+  }
+
+  if (connected && broken) {
+    return (
+      <div className="mt-4 rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3">
+        <p className="text-sm font-medium text-ink">Your Google Calendar connection stopped working.</p>
+        <p className="mt-1 text-sm text-ink">
+          Until you reconnect, new bookings won&apos;t show up in Google Calendar, and your busy times there
+          aren&apos;t being kept off your booking page, so clients could book over them.
+        </p>
+        <a
+          href="/api/auth/google-calendar/connect"
+          className="mt-3 inline-flex items-center justify-center gap-2 rounded-full bg-ink-red px-5 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-90"
+        >
+          <ShieldCheck size={14} /> Reconnect Google Calendar
+        </a>
+      </div>
     );
   }
 

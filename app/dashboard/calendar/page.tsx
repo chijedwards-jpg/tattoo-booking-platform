@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { googleCalendarEmbedUrl } from "@/lib/googleCalendar";
-import { isGoogleOAuthConfigured } from "@/lib/googleOAuth";
+import { isGoogleOAuthConfigured, getValidAccessToken } from "@/lib/googleOAuth";
 import GoogleBusyBlockConnect from "./GoogleBusyBlockConnect";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +22,10 @@ export default async function CalendarPage({
   if (!artist) redirect("/login");
 
   const connection = artist.googleCalendarConnection;
+  // A connection row can outlive Google's acceptance of it (access revoked,
+  // or a refresh token that expired). Booking quietly carries on without
+  // Google then, so this is the one place the artist can find out.
+  const broken = connection != null && (await getValidAccessToken(artistId)) == null;
 
   return (
     <div>
@@ -48,6 +52,7 @@ export default async function CalendarPage({
         <GoogleBusyBlockConnect
           connected={Boolean(connection)}
           configured={isGoogleOAuthConfigured()}
+          broken={broken}
         />
       </div>
 

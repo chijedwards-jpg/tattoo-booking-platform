@@ -12,10 +12,20 @@ export default async function SubmissionsPage() {
   const artistId = await getSessionArtistId();
   if (!artistId) redirect("/login");
 
+  // Not the stored photos themselves (megabytes per request) — the
+  // thumbnails load separately from the image route.
   const submissions = await prisma.submission.findMany({
     where: { artistId },
-    include: { client: true },
     orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      status: true,
+      placement: true,
+      aiDetectedStyle: true,
+      estimatedPriceLow: true,
+      estimatedPriceHigh: true,
+      client: { select: { name: true, email: true } },
+    },
   });
 
   return (
@@ -37,12 +47,12 @@ export default async function SubmissionsPage() {
               href={`/dashboard/submissions/${s.id}`}
               className="flex items-center gap-4 rounded-xl border border-line bg-card p-4 transition-colors hover:border-ink-red/40"
             >
-              {s.inspirationImages[0] && (
-                <img
-                  src={`/api/submissions/${s.id}/images/0`}
-                  className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
-                />
-              )}
+              <img
+                src={`/api/submissions/${s.id}/images/0`}
+                alt=""
+                loading="lazy"
+                className="h-14 w-14 flex-shrink-0 rounded-lg object-cover"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-medium text-ink">{s.client.name || s.client.email}</span>

@@ -42,7 +42,7 @@ export default async function FlashPage() {
         rel="noopener noreferrer"
         className="mt-2 inline-block text-sm text-ink-red hover:underline"
       >
-        View your flash page \u2197
+        View your flash page ↗
       </a>
       <div className="mt-6">
         <FlashManager

@@ -155,7 +155,7 @@ export function FlashBooking({
                       {error}
                     </p>
                   )}
-                  {slots === null && <p className="mt-2 text-sm text-grey">Loading available times\u2026</p>}
+                  {slots === null && <p className="mt-2 text-sm text-grey">Loading available times…</p>}
                   {slots?.length === 0 && (
                     <p className="mt-2 text-sm text-grey">No openings right now. Please check back soon.</p>
                   )}
