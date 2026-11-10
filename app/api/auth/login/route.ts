@@ -5,8 +5,10 @@ import { verifyPassword, createSession } from "@/lib/auth";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
+  // Phones auto-capitalize and autofill adds spaces; neither should lock
+  // anyone out.
+  email: z.string().trim().email().max(200),
+  password: z.string().max(200),
 });
 
 // Bcrypt already slows each guess, but without a limit a script could still
@@ -29,8 +31,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid login" }, { status: 400 });
   }
 
-  const artist = await prisma.artist.findUnique({
-    where: { email: parsed.data.email },
+  const artist = await prisma.artist.findFirst({
+    where: { email: { equals: parsed.data.email, mode: "insensitive" } },
   });
 
   // Deliberately vague error message — don't reveal whether the email

@@ -12,12 +12,14 @@ const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 
 const SignupSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1),
+  email: z.string().trim().toLowerCase().email("Please enter a valid email").max(200),
+  password: z.string().min(8, "Password must be at least 8 characters").max(200),
+  name: z.string().trim().min(1, "Enter your name").max(100),
   slug: z
     .string()
-    .min(3)
+    .trim()
+    .min(3, "Your page address needs at least 3 characters")
+    .max(40)
     .regex(/^[a-z0-9-]+$/, "Use only lowercase letters, numbers, and dashes"),
   timeZone: z.string().optional(),
 });
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest) {
   const { email, password, name, slug, timeZone } = parsed.data;
 
   const existing = await prisma.artist.findFirst({
-    where: { OR: [{ email }, { slug }] },
+    where: { OR: [{ email: { equals: email, mode: "insensitive" } }, { slug }] },
   });
   if (existing) {
     return NextResponse.json(
