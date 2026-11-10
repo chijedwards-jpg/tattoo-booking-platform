@@ -95,7 +95,7 @@ export function FlashBooking({
               />
               <h1 className="mt-4 font-display text-3xl leading-tight text-ink">{design.name}</h1>
               <p className="mt-1 text-sm text-grey">
-                ${design.price.toFixed(0)} \u00b7 {formatFlashDuration(design.durationMins)}
+                ${design.price.toFixed(0)} · {formatFlashDuration(design.durationMins)}
                 {design.oneOff && " \u00b7 One of a kind"}
               </p>
             </div>

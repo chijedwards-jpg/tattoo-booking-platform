@@ -73,7 +73,7 @@ export default async function FlashGalleryPage({ params }: { params: { slug: str
                 <div className="p-3">
                   <p className="truncate text-sm font-medium text-ink">{d.name}</p>
                   <p className="mt-0.5 text-xs text-grey">
-                    ${d.price.toFixed(0)} \u00b7 {formatFlashDuration(d.durationMins)}
+                    ${d.price.toFixed(0)} · {formatFlashDuration(d.durationMins)}
                   </p>
                   {d.oneOff && <p className="mt-0.5 text-xs text-ink-red">One of a kind</p>}
                 </div>

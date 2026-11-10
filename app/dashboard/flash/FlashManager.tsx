@@ -195,7 +195,7 @@ export function FlashManager({ designs }: { designs: FlashDesignRow[] }) {
                     )}
                   </div>
                   <p className="mt-1 text-xs text-grey">
-                    ${d.price.toFixed(0)} \u00b7 {formatFlashDuration(d.durationMins)} \u00b7{" "}
+                    ${d.price.toFixed(0)} · {formatFlashDuration(d.durationMins)} ·{" "}
                     {d.oneOff ? "One of a kind" : "Repeatable"}
                   </p>
                 </div>
