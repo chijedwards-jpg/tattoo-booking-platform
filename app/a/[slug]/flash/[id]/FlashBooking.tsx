@@ -23,6 +23,7 @@ export function FlashBooking({
   const [timeZone, setTimeZone] = useState<string | undefined>(undefined);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
   const [booking, setBooking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [booked, setBooked] = useState<{
@@ -52,7 +53,7 @@ export function FlashBooking({
       const res = await fetch(`/api/public/flash/${design.id}/book`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientEmail: email, placement, startTime: slot.start }),
+        body: JSON.stringify({ clientEmail: email.trim(), clientName: name.trim(), placement, startTime: slot.start }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -68,7 +69,7 @@ export function FlashBooking({
     }
   }
 
-  const ready = placement && /\S+@\S+\.\S+/.test(email);
+  const ready = placement && name.trim().length > 0 && /^\S+@\S+\.\S+$/.test(email.trim());
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -118,6 +119,22 @@ export function FlashBooking({
                 </div>
 
                 <div>
+                  <label htmlFor="flash-name" className="font-mono text-xs uppercase tracking-wide text-grey">
+                    Your name
+                  </label>
+                  <input
+                    id="flash-name"
+                    type="text"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    maxLength={100}
+                    placeholder="Your name"
+                    className={`mt-1 ${inputClass()}`}
+                  />
+                </div>
+
+                <div>
                   <label className="font-mono text-xs uppercase tracking-wide text-grey">Your email</label>
                   <input
                     type="email"
@@ -131,7 +148,7 @@ export function FlashBooking({
                 <div>
                   <p className="font-mono text-xs uppercase tracking-wide text-grey">Pick a time to book</p>
                   {!ready && (
-                    <p className="mt-2 text-sm text-grey">Choose a placement and enter your email first.</p>
+                    <p className="mt-2 text-sm text-grey">Choose a placement and enter your name and email first.</p>
                   )}
                   {error && (
                     <p className="mt-2 rounded-xl border border-ink-red/40 bg-ink-red/10 px-4 py-3 text-sm text-ink">

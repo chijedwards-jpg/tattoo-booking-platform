@@ -14,7 +14,7 @@ export const VALID_STYLES = [
 interface AnalyzeImageParams {
   images: {
     base64Image: string; // no data: prefix
-    mediaType: "image/jpeg" | "image/png" | "image/webp";
+    mediaType: "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "image/heif";
   }[];
   description?: string;
   sizeInches?: number;

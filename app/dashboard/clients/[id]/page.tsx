@@ -8,6 +8,7 @@ import { STATUS_META } from "../../statusMeta";
 import { artistHasClient } from "@/lib/clients";
 import { CONFIRMATION_META } from "@/lib/confirmationMeta";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
+import { placementLabel } from "@/lib/placements";
 import { ClientNotes, ClientPhotos, PrivateRating, ReviewVisibility } from "./ClientProfileParts";
 
 export const dynamic = "force-dynamic";
@@ -113,7 +114,7 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
                     <p className="text-sm font-medium text-ink">{fmt(a.startTime)}</p>
                     <p className="mt-0.5 text-xs text-grey">
                       {a.type === "TATTOO" ? "Tattoo" : "Consultation"}
-                      {a.submission?.placement ? ` · ${a.submission.placement}` : ""}
+                      {a.submission?.placement ? ` · ${placementLabel(a.submission.placement)}` : ""}
                       {a.submission?.aiDetectedStyle ? ` · ${a.submission.aiDetectedStyle}` : ""}
                       {a.type === "TATTOO" && a.depositAmount
                         ? ` · $${a.depositAmount.toFixed(0)} deposit ${a.depositPaid ? "received" : "pending"}`
@@ -230,7 +231,7 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink">
-                      {s.placement} · {s.aiDetectedStyle ?? "—"}
+                      {placementLabel(s.placement)} · {s.aiDetectedStyle ?? "—"}
                       {s.estimatedPriceLow != null &&
                         ` · $${s.estimatedPriceLow.toFixed(0)}–$${s.estimatedPriceHigh?.toFixed(0)}`}
                     </p>

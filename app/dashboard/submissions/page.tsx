@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "../../ui";
 import { STATUS_META } from "../statusMeta";
+import { placementLabel } from "@/lib/placements";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,11 @@ export default async function SubmissionsPage() {
               )}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-ink">{s.client.email}</span>
+                  <span className="truncate text-sm font-medium text-ink">{s.client.name || s.client.email}</span>
                   <Badge tone={status.tone}>{status.label}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-grey">
-                  {s.placement} · {s.aiDetectedStyle ?? "—"}
+                  {placementLabel(s.placement)} · {s.aiDetectedStyle ?? "—"}
                   {s.estimatedPriceLow &&
                     ` · $${s.estimatedPriceLow.toFixed(0)}–$${s.estimatedPriceHigh?.toFixed(0)}`}
                 </p>

@@ -13,22 +13,33 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 const MAX_BASE64_IMAGE_LENGTH = 8 * 1024 * 1024 * 1.4;
 const MAX_IMAGES = 5;
 
+// The formats the request form offers (HEIC straight from iPhones), all of
+// which the image analyzer reads. Anything else (GIFs, SVGs) used to get
+// "analyzed" anyway and priced as an invented tattoo.
+const IMAGE_DATA_URL = /^data:image\/(jpeg|png|webp|heic|heif);base64,/;
+
 const SubmissionSchema = z.object({
-  artistSlug: z.string(),
-  clientEmail: z.string().email(),
-  clientName: z.string().optional(),
-  clientPhone: z.string().optional(),
+  artistSlug: z.string().max(100),
+  clientEmail: z.string().trim().email("Please enter a valid email").max(200),
+  // Empty strings from an untouched form field mean "not given".
+  clientName: z.string().trim().max(100).optional().transform((s) => s || undefined),
+  clientPhone: z.string().trim().max(30).optional().transform((s) => s || undefined),
 
   // data:image/jpeg;base64,... — sent straight from the browser's file input
   inspirationImageDataUrls: z
-    .array(z.string().max(MAX_BASE64_IMAGE_LENGTH, "Image is too large"))
+    .array(
+      z
+        .string()
+        .max(MAX_BASE64_IMAGE_LENGTH, "Image is too large")
+        .regex(IMAGE_DATA_URL, "Please upload a JPEG, PNG, WebP or HEIC photo")
+    )
     .min(1)
     .max(MAX_IMAGES),
-  placement: z.string(),
-  sizeInches: z.number().optional(),
-  sizePreset: z.string().optional(),
+  placement: z.string().trim().min(1).max(60),
+  sizeInches: z.number().positive("Size must be more than 0 inches").max(120).optional(),
+  sizePreset: z.string().max(20).optional(),
   referenceFreedom: z.number().min(0).max(100),
-  description: z.string().optional(),
+  description: z.string().trim().max(2000, "Please keep your notes under 2000 characters").optional(),
 });
 
 // Each submission triggers a billed Gemini call and an email send, and the
@@ -49,8 +60,9 @@ export async function POST(req: NextRequest) {
   const parsed = SubmissionSchema.safeParse(body);
 
   if (!parsed.success) {
+    // The first message is written for the client — the form shows it as is.
     return NextResponse.json(
-      { error: "Invalid submission", details: parsed.error.flatten() },
+      { error: parsed.error.errors[0]?.message ?? "Invalid submission", details: parsed.error.flatten() },
       { status: 400 }
     );
   }
@@ -71,18 +83,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // --- Find or create client ----------------------------------------------
-
-  const client = await prisma.client.upsert({
-    where: { email: input.clientEmail },
-    update: { name: input.clientName, phone: input.clientPhone },
-    create: {
-      email: input.clientEmail,
-      name: input.clientName,
-      phone: input.clientPhone,
-    },
-  });
-
   // --- Parse the data URL into base64 + media type ------------------------
 
   const images = [];
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid image data" }, { status: 400 });
     }
     images.push({
-      mediaType: match[1] as "image/jpeg" | "image/png" | "image/webp",
+      mediaType: match[1] as "image/jpeg" | "image/png" | "image/webp" | "image/heic" | "image/heif",
       base64Image: match[2],
     });
   }
@@ -159,6 +159,20 @@ export async function POST(req: NextRequest) {
       requireConsultAboveDurationMins: artist.bookingRules.requireConsultAboveDurationMins,
     }
   );
+
+  // --- Find or create client ----------------------------------------------
+  // Only now that the request is valid and analyzed — a rejected request
+  // shouldn't leave a client with no requests in the artist's Clients list.
+
+  const client = await prisma.client.upsert({
+    where: { email: input.clientEmail },
+    update: { name: input.clientName, phone: input.clientPhone },
+    create: {
+      email: input.clientEmail,
+      name: input.clientName,
+      phone: input.clientPhone,
+    },
+  });
 
   // --- Save submission ------------------------------------------------------
 

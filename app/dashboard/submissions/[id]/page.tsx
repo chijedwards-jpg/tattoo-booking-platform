@@ -7,6 +7,7 @@ import { Card } from "../../../ui";
 import ReviewActions from "./ReviewActions";
 import DepositStatus from "./DepositStatus";
 import DeleteSubmissionButton from "./DeleteSubmissionButton";
+import { placementLabel, sizeLabel } from "@/lib/placements";
 
 export const dynamic = "force-dynamic";
 
@@ -57,8 +58,8 @@ export default async function SubmissionDetailPage({
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-3">
-        <Field label="Placement" value={submission.placement} />
-        <Field label="Size" value={submission.sizePreset ?? `${submission.sizeInches ?? "—"} in`} />
+        <Field label="Placement" value={placementLabel(submission.placement)} />
+        <Field label="Size" value={sizeLabel(submission.sizePreset, submission.sizeInches)} />
         <Field label="Reference freedom" value={`${submission.referenceFreedom}% artist's interpretation`} />
         <Field label="Detected style" value={submission.aiDetectedStyle ?? "—"} />
         <Field label="Complexity" value={submission.aiComplexity ? `${submission.aiComplexity}/10` : "—"} />
@@ -102,6 +103,8 @@ export default async function SubmissionDetailPage({
           depositAmount={submission.appointment.depositAmount}
           confirmationStatus={submission.appointment.confirmationStatus}
           confirmationNote={submission.appointment.confirmationNote}
+          status={submission.appointment.status}
+          isPast={submission.appointment.startTime <= new Date()}
         />
       ) : (
         <ReviewActions

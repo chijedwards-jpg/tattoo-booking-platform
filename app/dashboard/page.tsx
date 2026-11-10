@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Badge, StatCard } from "../ui";
 import { STATUS_META } from "./statusMeta";
+import { placementLabel } from "@/lib/placements";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export default async function OverviewPage() {
                 )}
                 <div>
                   <p className="font-medium text-ink">
-                    {s.client.email} · {s.placement}
+                    {s.client.name || s.client.email} · {placementLabel(s.placement)}
                   </p>
                   <p className="text-xs text-grey">{s.aiDetectedStyle ?? "—"}</p>
                 </div>

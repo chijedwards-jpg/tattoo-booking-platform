@@ -64,6 +64,8 @@ export default function IntakeFlow({
   const [customHeight, setCustomHeight] = useState("");
   const [description, setDescription] = useState("");
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -86,11 +88,16 @@ export default function IntakeFlow({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           artistSlug,
-          clientEmail: email,
+          clientEmail: email.trim(),
+          clientName: name.trim() || undefined,
+          clientPhone: phone.trim() || undefined,
           inspirationImageDataUrls: dataUrls,
           placement,
           sizePreset: sizePreset ?? undefined,
-          sizeInches: customWidth ? Number(customWidth) : undefined,
+          // Only for "Larger" — a custom size typed earlier and then
+          // abandoned for a preset must not contradict the preset. The
+          // larger of width and height is what drives session length.
+          sizeInches: sizePreset === "larger" ? customSizeInches(customWidth, customHeight) : undefined,
           referenceFreedom: freedom,
           description: description || undefined,
         }),
@@ -192,6 +199,10 @@ export default function IntakeFlow({
             <DetailsStep
               email={email}
               setEmail={setEmail}
+              name={name}
+              setName={setName}
+              phone={phone}
+              setPhone={setPhone}
               preview={photos[0]?.preview ?? null}
               photoCount={photos.length}
               placement={placement}
@@ -531,6 +542,9 @@ function SizeStep({
             <label className="font-mono text-xs uppercase tracking-wide text-grey">Width (in)</label>
             <input
               type="number"
+              min={1}
+              max={120}
+              inputMode="decimal"
               value={customWidth}
               onChange={(e) => setCustomWidth(e.target.value)}
               className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-ink outline-none focus:border-ink-red"
@@ -540,6 +554,9 @@ function SizeStep({
             <label className="font-mono text-xs uppercase tracking-wide text-grey">Height (in)</label>
             <input
               type="number"
+              min={1}
+              max={120}
+              inputMode="decimal"
               value={customHeight}
               onChange={(e) => setCustomHeight(e.target.value)}
               className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-ink outline-none focus:border-ink-red"
@@ -557,9 +574,19 @@ function SizeStep({
 // Step 5 — Details + summary (submission happens here)
 // ---------------------------------------------------------------------------
 
+/** Larger of the typed width/height, or undefined if neither is a usable positive number. */
+function customSizeInches(width: string, height: string): number | undefined {
+  const dims = [Number(width), Number(height)].filter((n) => Number.isFinite(n) && n > 0);
+  return dims.length ? Math.min(120, Math.max(...dims)) : undefined;
+}
+
 function DetailsStep({
   email,
   setEmail,
+  name,
+  setName,
+  phone,
+  setPhone,
   preview,
   photoCount,
   placement,
@@ -572,6 +599,10 @@ function DetailsStep({
 }: {
   email: string;
   setEmail: (s: string) => void;
+  name: string;
+  setName: (s: string) => void;
+  phone: string;
+  setPhone: (s: string) => void;
   preview: string | null;
   photoCount: number;
   placement: Placement | null;
@@ -582,7 +613,8 @@ function DetailsStep({
   submitting: boolean;
   submitError: string | null;
 }) {
-  const emailValid = /\S+@\S+\.\S+/.test(email);
+  const emailValid = /^\S+@\S+\.\S+$/.test(email.trim());
+  const nameValid = name.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -593,12 +625,45 @@ function DetailsStep({
       </div>
 
       <div>
-        <label className="font-mono text-xs uppercase tracking-wide text-grey">Email</label>
+        <label htmlFor="client-name" className="font-mono text-xs uppercase tracking-wide text-grey">Name</label>
         <input
+          id="client-name"
+          type="text"
+          autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={100}
+          placeholder="Your name"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="client-email" className="font-mono text-xs uppercase tracking-wide text-grey">Email</label>
+        <input
+          id="client-email"
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          maxLength={200}
           placeholder="you@email.com"
+          className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
+        />
+      </div>
+
+      <div>
+        <label htmlFor="client-phone" className="font-mono text-xs uppercase tracking-wide text-grey">
+          Phone <span className="normal-case tracking-normal">(optional)</span>
+        </label>
+        <input
+          id="client-phone"
+          type="tel"
+          autoComplete="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          maxLength={30}
+          placeholder="So your artist can reach you"
           className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
         />
       </div>
@@ -625,7 +690,7 @@ function DetailsStep({
       <StepNav
         onNext={onSubmit}
         onBack={onBack}
-        disabled={!emailValid || submitting}
+        disabled={!emailValid || !nameValid || submitting}
         nextLabel={submitting ? "Analyzing your tattoo…" : "Get my estimate"}
       />
     </div>

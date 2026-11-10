@@ -10,7 +10,9 @@ import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { newClientToken, clientLink } from "@/lib/reminders";
 
 const BookingSchema = z.object({
-  clientEmail: z.string().email(),
+  clientEmail: z.string().trim().email("Please enter a valid email").max(200),
+  clientName: z.string().trim().max(100).optional().transform((s) => s || undefined),
+  clientPhone: z.string().trim().max(30).optional().transform((s) => s || undefined),
   placement: z.string().min(1).max(40),
   startTime: z.string(),
 });
@@ -86,8 +88,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       const client = await tx.client.upsert({
         where: { email: input.clientEmail },
-        update: {},
-        create: { email: input.clientEmail },
+        update: { name: input.clientName, phone: input.clientPhone },
+        create: { email: input.clientEmail, name: input.clientName, phone: input.clientPhone },
       });
 
       const submission = await tx.submission.create({

@@ -16,7 +16,11 @@ export default function DepositStatus({
   depositAmount,
   confirmationStatus,
   confirmationNote,
+  status,
+  isPast,
 }: {
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+  isPast: boolean;
   appointmentId: string;
   type: "TATTOO" | "CONSULTATION";
   startTime: string;
@@ -30,7 +34,13 @@ export default function DepositStatus({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function act(action: "MARK_DEPOSIT_RECEIVED" | "CANCEL") {
+  async function act(action: "MARK_DEPOSIT_RECEIVED" | "CANCEL" | "MARK_COMPLETED" | "MARK_NO_SHOW") {
+    if (
+      action === "CANCEL" &&
+      !confirm("Cancel this appointment? The slot opens up again and the client is emailed a link to pick a new time.")
+    ) {
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -80,14 +90,20 @@ export default function DepositStatus({
         <Calendar size={13} /> Add to Google Calendar
       </a>
 
-      <div className="mt-4">
-        <Badge tone={CONFIRMATION_META[confirmationStatus].tone}>
-          {CONFIRMATION_META[confirmationStatus].label}
-        </Badge>
-        {confirmationStatus === "RESCHEDULE_REQUESTED" && confirmationNote && (
-          <p className="mt-2 text-sm text-ink">&ldquo;{confirmationNote}&rdquo;</p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {status !== "SCHEDULED" ? (
+          <Badge tone={status === "COMPLETED" ? "green" : "red"}>
+            {status === "COMPLETED" ? "Completed" : status === "NO_SHOW" ? "No-show" : "Cancelled"}
+          </Badge>
+        ) : (
+          <Badge tone={CONFIRMATION_META[confirmationStatus].tone}>
+            {CONFIRMATION_META[confirmationStatus].label}
+          </Badge>
         )}
       </div>
+      {status === "SCHEDULED" && confirmationStatus === "RESCHEDULE_REQUESTED" && confirmationNote && (
+        <p className="mt-2 text-sm text-ink">&ldquo;{confirmationNote}&rdquo;</p>
+      )}
 
       {type === "TATTOO" && (
         <div className="mt-4 flex items-center gap-3">
@@ -98,15 +114,27 @@ export default function DepositStatus({
         </div>
       )}
 
-      <div className="mt-4 flex gap-3">
-        {type === "TATTOO" && !depositPaid && (
+      <div className="mt-4 flex flex-wrap gap-3">
+        {type === "TATTOO" && !depositPaid && status !== "CANCELLED" && (
           <PrimaryButton onClick={() => act("MARK_DEPOSIT_RECEIVED")} disabled={submitting}>
             Mark deposit received
           </PrimaryButton>
         )}
-        <GhostButton onClick={() => act("CANCEL")} disabled={submitting}>
-          Cancel appointment
-        </GhostButton>
+        {status === "SCHEDULED" && isPast && (
+          <>
+            <PrimaryButton onClick={() => act("MARK_COMPLETED")} disabled={submitting}>
+              Mark completed
+            </PrimaryButton>
+            <GhostButton onClick={() => act("MARK_NO_SHOW")} disabled={submitting}>
+              Mark no-show
+            </GhostButton>
+          </>
+        )}
+        {status === "SCHEDULED" && !isPast && (
+          <GhostButton onClick={() => act("CANCEL")} disabled={submitting}>
+            Cancel appointment
+          </GhostButton>
+        )}
       </div>
       {error && <p className="mt-2 text-xs text-ink-red">{error}</p>}
     </Card>

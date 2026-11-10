@@ -54,6 +54,14 @@ export function ConfirmActions({
         <p className="mt-3 text-sm text-ink">
           {artistName} has been told you need a new time and will reach out to you.
         </p>
+        <button
+          onClick={() => act("CONFIRM")}
+          disabled={busy}
+          className="mt-4 text-sm text-grey underline hover:text-ink disabled:opacity-40"
+        >
+          Never mind, I can make this time
+        </button>
+        {error && <p className="mt-3 text-sm text-ink-red">{error}</p>}
       </div>
     );
   }
