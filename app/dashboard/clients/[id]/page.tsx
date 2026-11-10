@@ -116,7 +116,7 @@ export default async function ClientProfilePage({ params }: { params: { id: stri
                       {a.type === "TATTOO" ? "Tattoo" : "Consultation"}
                       {a.submission?.placement ? ` · ${placementLabel(a.submission.placement)}` : ""}
                       {a.submission?.aiDetectedStyle ? ` · ${a.submission.aiDetectedStyle}` : ""}
-                      {a.type === "TATTOO" && a.depositAmount
+                      {a.type === "TATTOO" && a.depositAmount && a.status !== "CANCELLED"
                         ? ` · $${a.depositAmount.toFixed(0)} deposit ${a.depositPaid ? "received" : "pending"}`
                         : ""}
                     </p>

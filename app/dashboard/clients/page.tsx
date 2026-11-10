@@ -92,7 +92,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: { q?
             href={`/dashboard/clients/${client.id}`}
             className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-line bg-card p-4 transition-colors hover:border-ink-red/40"
           >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-[12rem] flex-1">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-medium text-ink">{client.name || client.email}</span>
                 {rating != null && (

@@ -5,6 +5,7 @@ import { hasActiveSubscriptionAccess } from "@/lib/stripe";
 import { SubscribeButton } from "./SubscribeButton";
 import { TimeZoneAutoDetect } from "./TimeZoneAutoDetect";
 import DashboardNav from "./DashboardNav";
+import MobileNav from "./MobileNav";
 import LogoutButton from "./LogoutButton";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -38,9 +39,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="flex min-h-screen flex-col bg-paper md:flex-row">
       {!artist.timeZone && <TimeZoneAutoDetect />}
-      <aside className="flex w-56 shrink-0 flex-col bg-ink px-4 py-6 text-paper">
+      <MobileNav artistName={artist.name} slug={artist.slug} />
+      <aside className="hidden w-56 shrink-0 flex-col bg-ink px-4 py-6 text-paper md:flex">
         <div className="mb-8 px-2">
           <p className="font-display text-lg leading-tight">{artist.name}</p>
           <p className="font-mono text-[11px] uppercase tracking-wide text-paper/50">
@@ -61,7 +63,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <LogoutButton />
       </aside>
 
-      <main className="flex-1 overflow-auto p-8 text-ink">{children}</main>
+      <main className="min-w-0 flex-1 overflow-auto p-4 text-ink sm:p-6 md:p-8">{children}</main>
     </div>
   );
 }
