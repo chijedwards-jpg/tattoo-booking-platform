@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 
 const UpdateStyleSchema = z.object({
-  name: z.string().trim().min(1).optional(),
-  multiplier: z.number().positive().optional(),
+  name: z.string().trim().min(1).max(60).optional(),
+  multiplier: z.number().positive().max(10).optional(),
   active: z.boolean().optional(),
 });
 

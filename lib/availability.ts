@@ -38,6 +38,10 @@ export function calculateAvailableSlots(params: {
   daysAhead?: number;
   slotIncrementMins?: number;
   now?: Date;
+  /** Calendar days ("YYYY-MM-DD", artist's time zone) the artist has off. */
+  blockedDates?: string[];
+  /** How far ahead a slot must start, so nobody books one starting in 5 minutes. */
+  minNoticeMins?: number;
 }): AvailableSlot[] {
   const {
     weeklyAvailability,
@@ -47,16 +51,21 @@ export function calculateAvailableSlots(params: {
     daysAhead = 14,
     slotIncrementMins = 30,
     now = new Date(),
+    blockedDates = [],
+    minNoticeMins = 0,
   } = params;
 
   const slots: AvailableSlot[] = [];
   const todayInZone = formatInTimeZone(now, timeZone, "yyyy-MM-dd");
+  const earliestStart = addMinutes(now, minNoticeMins);
+  const blocked = new Set(blockedDates);
 
   for (let dayOffset = 0; dayOffset < daysAhead; dayOffset++) {
     // Calendar days are the artist's, not the server's (Vercel runs in UTC).
     const [year, month, date] = todayInZone.split("-").map(Number);
     const day = new Date(Date.UTC(year, month - 1, date + dayOffset));
     const dayString = day.toISOString().slice(0, 10);
+    if (blocked.has(dayString)) continue;
 
     const dayOfWeek = day.getUTCDay();
     const windowsForDay = weeklyAvailability.filter((w) => w.dayOfWeek === dayOfWeek);
@@ -72,8 +81,8 @@ export function calculateAvailableSlots(params: {
       ) {
         const slotEnd = addMinutes(slotStart, durationMins);
 
-        // Skip anything already in the past
-        if (slotStart < now) continue;
+        // Skip anything in the past or inside the notice period
+        if (slotStart < earliestStart) continue;
 
         // Skip if it overlaps any existing appointment
         const overlaps = busy.some(

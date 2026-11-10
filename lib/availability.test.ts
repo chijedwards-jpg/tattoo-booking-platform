@@ -109,4 +109,39 @@ const slots6 = calculateAvailableSlots({
 });
 assert(slots6.length === 0, "a Tuesday window isn't offered while it's still Monday for the artist");
 
+// --- Days off: a blocked date offers nothing, the next week still does ---
+const slots7 = calculateAvailableSlots({
+  weeklyAvailability: [{ dayOfWeek: 3, startTime: "10:00", endTime: "12:00" }], // Wednesdays
+  busy: [],
+  durationMins: 60,
+  timeZone: DENVER,
+  daysAhead: 14,
+  now: new Date("2026-11-09T15:00:00Z"), // Mon Nov 9
+  blockedDates: ["2026-11-11"], // first Wednesday off
+});
+assert(
+  slots7.every((s) => !s.start.toISOString().startsWith("2026-11-11")),
+  "no slots on a day off"
+);
+assert(
+  slots7.some((s) => s.start.toISOString().startsWith("2026-11-18")),
+  "the following Wednesday is still offered"
+);
+
+// --- Minimum notice: nothing starting sooner than the notice period ---
+const noticeNow = new Date("2026-11-11T16:00:00Z"); // Wed 9am Denver
+const slots8 = calculateAvailableSlots({
+  weeklyAvailability: [{ dayOfWeek: 3, startTime: "10:00", endTime: "18:00" }],
+  busy: [],
+  durationMins: 60,
+  timeZone: DENVER,
+  daysAhead: 1,
+  now: noticeNow,
+  minNoticeMins: 3 * 60,
+});
+assert(
+  slots8.length > 0 && slots8[0].start.getTime() >= noticeNow.getTime() + 3 * 3600_000,
+  `first slot is at least 3 hours out, got ${slots8[0]?.start.toISOString()}`
+);
+
 console.log("\nAll availability tests passed.");

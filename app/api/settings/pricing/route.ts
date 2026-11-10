@@ -4,14 +4,14 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 
 const PricingSchema = z.object({
-  hourlyRate: z.number().positive(),
-  minimumPrice: z.number().nonnegative(),
+  hourlyRate: z.number().positive().max(10_000),
+  minimumPrice: z.number().nonnegative().max(100_000),
   rangeSpreadPct: z.number().min(0).max(1),
   depositType: z.enum(["FLAT", "PERCENT"]),
-  depositFlat: z.number().nonnegative().nullable(),
+  depositFlat: z.number().nonnegative().max(100_000).nullable(),
   depositPercent: z.number().min(0).max(1).nullable(),
-  depositInstructions: z.string().nullable(),
-  cancellationPolicy: z.string().nullable(),
+  depositInstructions: z.string().max(500).nullable(),
+  cancellationPolicy: z.string().max(2000).nullable(),
 });
 
 export async function PATCH(req: NextRequest) {

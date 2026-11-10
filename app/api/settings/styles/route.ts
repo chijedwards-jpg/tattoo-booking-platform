@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { getSessionArtistId } from "@/lib/auth";
 
 const CreateStyleSchema = z.object({
-  name: z.string().trim().min(1),
-  multiplier: z.number().positive(),
+  name: z.string().trim().min(1).max(60),
+  multiplier: z.number().positive().max(10),
 });
 
 export async function POST(req: NextRequest) {

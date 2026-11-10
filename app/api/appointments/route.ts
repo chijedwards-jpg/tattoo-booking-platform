@@ -7,6 +7,8 @@ import { fetchGoogleBusyIntervals, createGoogleCalendarEvent } from "@/lib/googl
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { newClientToken, clientLink } from "@/lib/reminders";
+import { findOpenSlots } from "@/lib/slots";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 const BookingSchema = z.object({
   submissionId: z.string(),
@@ -21,7 +23,12 @@ const BookingSchema = z.object({
  * marks it received from the dashboard.
  */
 export async function POST(req: NextRequest) {
-  const body = await req.json();
+  // No login on this endpoint, and every booking takes a real slot.
+  if (!checkRateLimit(`appointments:${getClientIp(req)}`, 10, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many tries. Please wait a bit." }, { status: 429 });
+  }
+
+  const body = await req.json().catch(() => null);
   const parsed = BookingSchema.safeParse(body);
 
   if (!parsed.success) {
@@ -35,7 +42,10 @@ export async function POST(req: NextRequest) {
 
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
-    include: { client: true, artist: { include: { bookingRules: true, pricingConfig: true } } },
+    include: {
+      client: true,
+      artist: { include: { bookingRules: true, pricingConfig: true, availability: true } },
+    },
   });
 
   if (!submission || !submission.artist.bookingRules || !submission.artist.pricingConfig) {
@@ -62,6 +72,24 @@ export async function POST(req: NextRequest) {
       : Math.round((submission.artistOverrideHours ?? submission.estimatedHours ?? 1) * 60);
   const startTime = new Date(parsed.data.startTime);
   const endTime = new Date(startTime.getTime() + durationMins * 60_000);
+
+  // Only a time the booking page actually offers — inside the artist's
+  // hours, ahead of the notice period, not over another booking or a day
+  // off. Without this, anyone posting straight to this endpoint could book
+  // 3am, a past date, or a blocked day. Same check as flash bookings.
+  const { slots } = await findOpenSlots({
+    artistId: submission.artistId,
+    timeZone: submission.artist.timeZone,
+    availability: submission.artist.availability,
+    type,
+    durationMins,
+  });
+  if (Number.isNaN(startTime.getTime()) || !slots.some((s) => s.start.getTime() === startTime.getTime())) {
+    return NextResponse.json(
+      { error: "That time is no longer available. Please pick another." },
+      { status: 409 }
+    );
+  }
 
   // Double-check no conflicting appointment slipped in between the client
   // viewing slots and clicking book (a real race condition worth guarding).
