@@ -89,6 +89,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           startTime: appointment.startTime,
           timeZone: appointment.artist.timeZone ?? DEFAULT_TIME_ZONE,
           rebookUrl: `${appUrl()}/book/${appointment.submissionId}`,
+          log: {
+            artistId: appointment.artistId,
+            clientId: appointment.clientId,
+            appointmentId: appointment.id,
+            kind: "APPOINTMENT_CANCELLED",
+          },
         });
       } catch (err) {
         console.error("Failed to email client about cancellation:", err);

@@ -90,9 +90,14 @@ export async function PATCH(
         to: submission.client.email,
         artistName: submission.artist.name,
         bookingUrl,
+        log: { artistId: submission.artistId, clientId: submission.clientId, kind: "CONSULTATION_REQUIRED" },
       });
     } else if (changed && submission.status === "DECLINED") {
-      await sendRequestDeclinedEmail({ to: submission.client.email, artistName: submission.artist.name });
+      await sendRequestDeclinedEmail({
+        to: submission.client.email,
+        artistName: submission.artist.name,
+        log: { artistId: submission.artistId, clientId: submission.clientId, kind: "REQUEST_DECLINED" },
+      });
     }
   } catch (err) {
     console.error(`Failed to email client about ${submission.status}:`, err);

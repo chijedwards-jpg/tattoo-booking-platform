@@ -26,6 +26,9 @@ const MESSAGE_KIND: Record<string, string> = {
   BOOKING_CONFIRMATION: "Booking confirmation",
   REMINDER: "Reminder",
   REVIEW_REQUEST: "Review request",
+  CONSULTATION_REQUIRED: "Consultation needed",
+  REQUEST_DECLINED: "Request declined",
+  APPOINTMENT_CANCELLED: "Appointment cancelled",
 };
 
 export default async function ClientProfilePage({ params }: { params: { id: string } }) {

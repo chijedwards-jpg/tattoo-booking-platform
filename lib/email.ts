@@ -273,18 +273,19 @@ export async function sendReviewRequestEmail(params: {
 
 // ---------------------------------------------------------------------------
 // Artist decisions on a request the client is waiting on. Without these the
-// client never hears back. Sent without a MessageLog entry for now — the
-// message kinds for them need a database change that hasn't been applied.
+// client never hears back.
 // ---------------------------------------------------------------------------
 
 export async function sendConsultationRequiredEmail(params: {
   to: string;
   artistName: string;
   bookingUrl: string;
+  log?: MessageLogContext;
 }) {
-  const { to, artistName, bookingUrl } = params;
+  const { to, artistName, bookingUrl, log } = params;
   await send({
     to,
+    log,
     subject: `${artistName} would like a quick consultation first`,
     html: `
       <p>${artistName} looked at your tattoo request and would like a short consultation before giving you a price.</p>
@@ -293,10 +294,11 @@ export async function sendConsultationRequiredEmail(params: {
   });
 }
 
-export async function sendRequestDeclinedEmail(params: { to: string; artistName: string }) {
-  const { to, artistName } = params;
+export async function sendRequestDeclinedEmail(params: { to: string; artistName: string; log?: MessageLogContext }) {
+  const { to, artistName, log } = params;
   await send({
     to,
+    log,
     subject: `An update on your tattoo request to ${artistName}`,
     html: `
       <p>Thanks for your interest. Unfortunately ${artistName} isn't able to take on this tattoo request.</p>
@@ -312,11 +314,13 @@ export async function sendAppointmentCancelledEmail(params: {
   startTime: Date;
   timeZone: string;
   rebookUrl: string;
+  log?: MessageLogContext;
 }) {
-  const { to, artistName, type, startTime, timeZone, rebookUrl } = params;
+  const { to, artistName, type, startTime, timeZone, rebookUrl, log } = params;
   const label = type === "TATTOO" ? "tattoo appointment" : "consultation";
   await send({
     to,
+    log,
     subject: `Your ${label} with ${artistName} was cancelled`,
     html: `
       <p>Your ${label} with ${artistName} on <strong>${fmtDateTime(startTime, timeZone)}</strong> has been cancelled.</p>
