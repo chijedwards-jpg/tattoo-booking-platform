@@ -8,6 +8,7 @@ import { createGoogleCalendarEvent } from "@/lib/googleOAuth";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 import { newClientToken, clientLink } from "@/lib/reminders";
+import { bookWithArtistLock, SlotTakenError } from "@/lib/bookingLock";
 
 const BookingSchema = z.object({
   clientEmail: z.string().trim().email("Please enter a valid email").max(200),
@@ -76,7 +77,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   let appointment;
   try {
-    appointment = await prisma.$transaction(async (tx) => {
+    // One booking per artist at a time, so two clients can't land on the
+    // same slot — see bookWithArtistLock.
+    appointment = await bookWithArtistLock(artist.id, slot, async (tx) => {
       if (design.oneOff) {
         // Conditional, so two clients can't both take a one of a kind.
         const claimed = await tx.flashDesign.updateMany({
@@ -126,6 +129,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   } catch (err) {
     if (err instanceof AlreadyClaimedError) {
       return NextResponse.json({ error: "Someone just booked this design." }, { status: 409 });
+    }
+    if (err instanceof SlotTakenError) {
+      return NextResponse.json({ error: "That time was just booked by someone else. Please pick another." }, { status: 409 });
     }
     throw err;
   }

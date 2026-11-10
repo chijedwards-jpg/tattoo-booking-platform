@@ -36,7 +36,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   }
 
-  const existing = await prisma.submission.findUnique({ where: { id: params.id } });
+  const existing = await prisma.submission.findUnique({
+    where: { id: params.id },
+    include: { appointment: true },
+  });
   if (!existing || existing.artistId !== artistId) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -44,8 +47,13 @@ export async function PATCH(
   // A booked request already has an appointment tied to it. Changing its
   // status would reopen the booking link and let the client book a second
   // slot for the same request (which then fails on the one-appointment
-  // rule). Cancelling the appointment is the way to reopen it.
-  if (existing.status === "BOOKED") {
+  // rule). Cancelling the appointment is the way to reopen it — except
+  // after a consultation, where pricing the tattoo is the whole next step.
+  const consultationOver =
+    existing.appointment?.type === "CONSULTATION" &&
+    (existing.appointment.status === "COMPLETED" ||
+      (existing.appointment.status === "SCHEDULED" && existing.appointment.endTime <= new Date()));
+  if (existing.status === "BOOKED" && !consultationOver) {
     return NextResponse.json(
       { error: "This request is already booked. Cancel the appointment first to change it." },
       { status: 409 }
@@ -60,10 +68,24 @@ export async function PATCH(
     );
   }
 
-  const submission = await prisma.submission.update({
-    where: { id: params.id },
-    data: parsed.data,
-    include: { client: true, artist: true },
+  const submission = await prisma.$transaction(async (tx) => {
+    if (consultationOver && existing.appointment) {
+      // The finished consultation moves to the client's history (it keeps
+      // its client) and frees the request for the tattoo booking, since a
+      // request holds one appointment at a time.
+      await tx.appointment.update({
+        where: { id: existing.appointment.id },
+        data: {
+          submissionId: null,
+          status: existing.appointment.status === "SCHEDULED" ? "COMPLETED" : existing.appointment.status,
+        },
+      });
+    }
+    return tx.submission.update({
+      where: { id: params.id },
+      data: parsed.data,
+      include: { client: true, artist: true },
+    });
   });
 
   // The client left the request form long before a human reviewed this, so

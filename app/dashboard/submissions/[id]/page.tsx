@@ -29,6 +29,14 @@ export default async function SubmissionDetailPage({
   // isn't theirs.
   if (!submission || submission.artistId !== artistId) return notFound();
 
+  // Same rule as PATCH /api/submissions/[id]: a finished consultation opens
+  // the way to pricing and booking the tattoo.
+  const consultationOver =
+    submission.status === "BOOKED" &&
+    submission.appointment?.type === "CONSULTATION" &&
+    (submission.appointment.status === "COMPLETED" ||
+      (submission.appointment.status === "SCHEDULED" && submission.appointment.endTime <= new Date()));
+
   const consultationReason = (submission.aiRawAnalysis as { consultationReason?: string | null } | null)
     ?.consultationReason;
 
@@ -106,7 +114,29 @@ export default async function SubmissionDetailPage({
           status={submission.appointment.status}
           isPast={submission.appointment.startTime <= new Date()}
         />
-      ) : (
+      ) : null}
+
+      {/* After a consultation, the next step is pricing the tattoo itself. */}
+      {consultationOver && (
+        <>
+          <p className="mt-8 text-sm text-ink">
+            Consultation done? Set the price and approve it, and the client gets a link to book the tattoo.
+          </p>
+          <ReviewActions
+            submissionId={submission.id}
+            currentStatus="RED_CONSULTATION_REQUIRED"
+            suggestedLow={submission.estimatedPriceLow ?? 0}
+            suggestedHigh={submission.estimatedPriceHigh ?? 0}
+            suggestedHours={submission.estimatedHours ?? 1}
+            artistOverrideHours={submission.artistOverrideHours}
+            artistOverridePriceLow={submission.artistOverridePriceLow}
+            artistOverridePriceHigh={submission.artistOverridePriceHigh}
+            artistNotes={submission.artistNotes}
+          />
+        </>
+      )}
+
+      {!(submission.status === "BOOKED" && submission.appointment) && (
         <ReviewActions
           submissionId={submission.id}
           currentStatus={submission.status}

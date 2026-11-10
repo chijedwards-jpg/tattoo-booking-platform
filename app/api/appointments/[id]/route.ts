@@ -61,9 +61,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   // CANCEL — free the slot and let the client come back through their
   // booking link to pick a new one.
+  // Letting go of the request is what makes rebooking possible: a request
+  // holds one appointment at a time, and a cancelled one used to keep
+  // holding it, so the client's "pick a new time" link failed. The
+  // cancelled appointment stays in the client's history through clientId.
   const updated = await prisma.appointment.update({
     where: { id: params.id },
-    data: { status: "CANCELLED" },
+    data: { status: "CANCELLED", submissionId: null },
   });
 
   if (appointment.googleEventId) {

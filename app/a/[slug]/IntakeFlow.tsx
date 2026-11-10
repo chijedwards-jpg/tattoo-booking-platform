@@ -399,6 +399,7 @@ function UploadStep({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="e.g. Keep it black and grey, make the lettering bigger, or this would cover an old tattoo…"
           rows={3}
+          maxLength={2000}
           className="mt-1 w-full rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink outline-none placeholder:text-grey/60 focus:border-ink-red"
         />
       </div>

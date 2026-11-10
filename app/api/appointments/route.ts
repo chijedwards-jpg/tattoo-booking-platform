@@ -8,6 +8,9 @@ import { sendBookingConfirmationEmail } from "@/lib/email";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
 import { newClientToken, clientLink } from "@/lib/reminders";
 import { findOpenSlots } from "@/lib/slots";
+import { bookWithArtistLock, SlotTakenError } from "@/lib/bookingLock";
+
+class AlreadyBookedError extends Error {}
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 const BookingSchema = z.object({
@@ -91,24 +94,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Double-check no conflicting appointment slipped in between the client
-  // viewing slots and clicking book (a real race condition worth guarding).
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      artistId: submission.artistId,
-      status: "SCHEDULED",
-      startTime: { lt: endTime },
-      endTime: { gt: startTime },
-    },
-  });
-
-  if (conflict) {
-    return NextResponse.json(
-      { error: "That time was just booked by someone else. Please pick another." },
-      { status: 409 }
-    );
-  }
-
   // Same race-condition guard against the artist's Google Calendar — an
   // event created there between the client viewing slots and clicking book
   // shouldn't be silently double-booked. fetchGoogleBusyIntervals fails
@@ -128,23 +113,49 @@ export async function POST(req: NextRequest) {
     depositAmount = priceLow != null ? calculateDeposit(submission.artist.pricingConfig, priceLow) : null;
   }
 
-  let appointment = await prisma.appointment.create({
-    data: {
-      artistId: submission.artistId,
-      clientId: submission.clientId,
-      submissionId: submission.id,
-      type,
-      startTime,
-      endTime,
-      depositAmount,
-      clientToken: newClientToken(),
-    },
-  });
-
-  await prisma.submission.update({
-    where: { id: submission.id },
-    data: { status: "BOOKED" },
-  });
+  // Clash check and save happen together, one booking per artist at a
+  // time — see bookWithArtistLock. The status re-check covers the same
+  // request being booked twice at once (two taps, two tabs).
+  let appointment;
+  try {
+    appointment = await bookWithArtistLock(submission.artistId, { start: startTime, end: endTime }, async (tx) => {
+      const claimed = await tx.submission.updateMany({
+        where: { id: submission.id, status: submission.status },
+        data: { status: "BOOKED" },
+      });
+      if (claimed.count === 0) throw new AlreadyBookedError();
+      // A request holds one appointment at a time. An earlier one that was
+      // cancelled (or a finished consultation) stays in the client's history
+      // but lets go of the request, or this rebooking would be refused.
+      await tx.appointment.updateMany({
+        where: { submissionId: submission.id, status: { not: "SCHEDULED" } },
+        data: { submissionId: null },
+      });
+      return tx.appointment.create({
+        data: {
+          artistId: submission.artistId,
+          clientId: submission.clientId,
+          submissionId: submission.id,
+          type,
+          startTime,
+          endTime,
+          depositAmount,
+          clientToken: newClientToken(),
+        },
+      });
+    });
+  } catch (err) {
+    if (err instanceof AlreadyBookedError) {
+      return NextResponse.json({ error: "This request is already booked." }, { status: 409 });
+    }
+    if (err instanceof SlotTakenError) {
+      return NextResponse.json(
+        { error: "That time was just booked by someone else. Please pick another." },
+        { status: 409 }
+      );
+    }
+    throw err;
+  }
 
   // Push the booking onto the artist's real Google Calendar, if connected —
   // this is the calendar artists actually see; the app has no calendar view
