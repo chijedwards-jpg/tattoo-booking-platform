@@ -3,6 +3,7 @@ import { getSessionArtistId } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { BookingRulesForm } from "../SettingsForm";
 import { RestrictionsForm } from "../StylesAndRestrictions";
+import { ClientMessagesForm } from "../ClientMessagesForm";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,15 @@ export default async function RulesSettingsPage() {
         need a consultation instead of auto-booking.
       </p>
       <RestrictionsForm restrictions={restrictions} />
+
+      <h2 id="reminders" className="mb-1 mt-10 font-display text-xl text-ink">Reminders &amp; reviews</h2>
+      <p className="mb-4 text-sm text-grey">
+        Emails your clients get automatically. Each one is saved on the client's page under Clients.
+      </p>
+      <ClientMessagesForm
+        reminderDaysBefore={bookingRules.reminderDaysBefore}
+        sendReviewRequests={bookingRules.sendReviewRequests}
+      />
     </div>
   );
 }

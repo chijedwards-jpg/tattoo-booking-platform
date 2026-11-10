@@ -64,6 +64,7 @@ export async function PATCH(
           priceLow,
           priceHigh,
           bookingUrl,
+          log: { artistId: submission.artistId, clientId: submission.clientId, kind: "ESTIMATE_APPROVED" },
         });
       } catch (err) {
         console.error("Failed to send approval email:", err);

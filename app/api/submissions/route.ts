@@ -200,6 +200,7 @@ export async function POST(req: NextRequest) {
       status: routing,
       priceLow: estimate.priceLow,
       priceHigh: estimate.priceHigh,
+      log: { artistId: artist.id, clientId: client.id, kind: "REQUEST_RECEIVED" },
     });
   } catch (err) {
     console.error("Failed to send submission-received email:", err);

@@ -4,11 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Users, Calendar, DollarSign, Palette, ShieldAlert, CalendarClock, Settings as SettingsIcon, CreditCard, Images, Zap,
+  BookUser,
 } from "lucide-react";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", Icon: Home },
   { href: "/dashboard/submissions", label: "Submissions", Icon: Users },
+  { href: "/dashboard/clients", label: "Clients", Icon: BookUser },
   { href: "/dashboard/calendar", label: "Calendar", Icon: Calendar },
   { href: "/dashboard/flash", label: "Flash", Icon: Zap },
   { href: "/dashboard/settings/pricing", label: "Pricing", Icon: DollarSign },

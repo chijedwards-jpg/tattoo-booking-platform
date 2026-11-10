@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import {
-  Upload, MapPin, Ruler, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Plus, X,
+  Upload, MapPin, Ruler, Sparkles, ArrowRight, ChevronLeft, ChevronRight, Plus, X, Star,
 } from "lucide-react";
+
+export type PublicReview = { id: string; rating: number; comment: string | null; name: string | null };
 import { SlotBooker, BookedConfirmation, type Slot } from "../../SlotBooker";
 import { PLACEMENTS, type Placement } from "@/lib/placements";
 import { fileToUploadDataUrl, MAX_UPLOAD_DATA_URL_LENGTH } from "@/lib/files";
@@ -41,12 +43,14 @@ export default function IntakeFlow({
   artistBio,
   portfolioImages,
   hasFlash,
+  reviews = [],
 }: {
   artistSlug: string;
   artistName: string;
   artistBio: string | null;
   portfolioImages: string[];
   hasFlash: boolean;
+  reviews?: PublicReview[];
 }) {
   const [stepIndex, setStepIndex] = useState(0);
   const step = STEP_KEYS[stepIndex];
@@ -145,6 +149,7 @@ export default function IntakeFlow({
               artistName={artistName}
               artistBio={artistBio}
               portfolioImages={portfolioImages}
+              reviews={reviews}
               flashHref={hasFlash ? `/a/${artistSlug}/flash` : null}
               onNext={next}
             />
@@ -222,12 +227,14 @@ function WelcomeStep({
   artistName,
   artistBio,
   portfolioImages,
+  reviews,
   flashHref,
   onNext,
 }: {
   artistName: string;
   artistBio: string | null;
   portfolioImages: string[];
+  reviews: PublicReview[];
   flashHref: string | null;
   onNext: () => void;
 }) {
@@ -272,6 +279,25 @@ function WelcomeStep({
           Upload → estimate → book. No back-and-forth if it's straightforward.
         </p>
       </div>
+
+      {reviews.length > 0 && (
+        <div className="mt-10 text-left">
+          <h2 className="font-display text-xl text-ink">What clients say</h2>
+          <div className="mt-3 flex flex-col gap-3">
+            {reviews.map((r) => (
+              <div key={r.id} className="rounded-xl border border-line bg-card p-4">
+                <span className="flex gap-0.5" aria-label={`${r.rating} out of 5`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} size={14} className={n <= r.rating ? "fill-ochre text-ochre" : "text-line"} />
+                  ))}
+                </span>
+                {r.comment && <p className="mt-2 text-sm text-ink">{r.comment}</p>}
+                {r.name && <p className="mt-2 text-xs text-grey">{r.name}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

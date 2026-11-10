@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Calendar } from "lucide-react";
 import { Card, Badge, PrimaryButton, GhostButton } from "../../../ui";
 import { googleCalendarUrl } from "@/lib/googleCalendar";
+import { CONFIRMATION_META } from "@/lib/confirmationMeta";
 
 export default function DepositStatus({
   appointmentId,
@@ -13,6 +14,8 @@ export default function DepositStatus({
   endTime,
   depositPaid,
   depositAmount,
+  confirmationStatus,
+  confirmationNote,
 }: {
   appointmentId: string;
   type: "TATTOO" | "CONSULTATION";
@@ -20,6 +23,8 @@ export default function DepositStatus({
   endTime: string;
   depositPaid: boolean;
   depositAmount: number | null;
+  confirmationStatus: keyof typeof CONFIRMATION_META;
+  confirmationNote: string | null;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -74,6 +79,15 @@ export default function DepositStatus({
       >
         <Calendar size={13} /> Add to Google Calendar
       </a>
+
+      <div className="mt-4">
+        <Badge tone={CONFIRMATION_META[confirmationStatus].tone}>
+          {CONFIRMATION_META[confirmationStatus].label}
+        </Badge>
+        {confirmationStatus === "RESCHEDULE_REQUESTED" && confirmationNote && (
+          <p className="mt-2 text-sm text-ink">&ldquo;{confirmationNote}&rdquo;</p>
+        )}
+      </div>
 
       {type === "TATTOO" && (
         <div className="mt-4 flex items-center gap-3">

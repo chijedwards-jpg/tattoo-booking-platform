@@ -15,19 +15,19 @@ datasource db {
 // ---------------------------------------------------------------------------
 
 model Artist {
-  id          String   @id @default(cuid())
-  email       String   @unique
+  id           String  @id @default(cuid())
+  email        String  @unique
   passwordHash String
-  name        String
-  slug        String   @unique // public booking page: /a/[slug]
-  bio         String?
+  name         String
+  slug         String  @unique // public booking page: /a/[slug]
+  bio          String?
   profilePhoto String?
-  location    String?
+  location     String?
 
   // IANA zone ("America/Denver") that weekly availability hours are written
   // in. Null only for accounts that predate this field and haven't opened
   // the dashboard since, which fills it in from their browser.
-  timeZone    String?
+  timeZone String?
 
   // Subscription billing (Stripe) — artists pay the platform monthly.
   // stripeSubscriptionStatus mirrors Stripe's own status string verbatim
@@ -37,22 +37,30 @@ model Artist {
   stripeSubscriptionId     String? @unique
   stripeSubscriptionStatus String?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Pricing config (1:1)
   pricingConfig PricingConfig?
 
   // Booking automation rules (1:1)
-  bookingRules  BookingRules?
+  bookingRules BookingRules?
 
-  styles        TattooStyle[]
-  restrictions  ArtistRestriction[]
-  availability  AvailabilityBlock[]
-  submissions   Submission[]
-  appointments  Appointment[]
+  styles          TattooStyle[]
+  restrictions    ArtistRestriction[]
+  availability    AvailabilityBlock[]
+  submissions     Submission[]
+  appointments    Appointment[]
   portfolioImages PortfolioImage[]
-  flashDesigns  FlashDesign[]
+  flashDesigns    FlashDesign[]
+
+  // Client records (notes, photos, reviews, message history) — kept per
+  // artist, since Client itself is shared by every artist a client books.
+  clientNotes   ClientNote[]
+  clientPhotos  ClientPhoto[]
+  clientRatings ClientRating[]
+  reviews       Review[]
+  messageLogs   MessageLog[]
 
   // OAuth connection to the artist's real Google Calendar — the single
   // calendar integration: blocks busy times from bookable slots, pushes
@@ -67,33 +75,33 @@ model Artist {
 // which defaults to RESTRICT to force explicit cleanup of real business
 // records).
 model FlashDesign {
-  id           String   @id @default(cuid())
-  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  artistId     String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String
 
   name         String
-  imageDataUrl String   // data:image/...;base64,... same pattern as PortfolioImage
+  imageDataUrl String // data:image/...;base64,... same pattern as PortfolioImage
   price        Float
   durationMins Int
 
   // true = one of a kind, comes off the page once booked. false = repeatable.
-  oneOff       Boolean  @default(false)
-  claimedAt    DateTime? // when a one-of-a-kind design was booked
-  active       Boolean  @default(true) // false = hidden from clients by the artist
+  oneOff    Boolean   @default(false)
+  claimedAt DateTime? // when a one-of-a-kind design was booked
+  active    Boolean   @default(true) // false = hidden from clients by the artist
 
-  createdAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  submissions  Submission[]
+  submissions Submission[]
 
   @@index([artistId])
 }
 
 model PortfolioImage {
-  id           String   @id @default(cuid())
-  artist       Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  artistId     String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String
 
-  imageDataUrl String   // data:image/...;base64,... — same pattern as Submission.inspirationImages
+  imageDataUrl String // data:image/...;base64,... — same pattern as Submission.inspirationImages
   caption      String?
   createdAt    DateTime @default(now())
 }
@@ -105,9 +113,9 @@ model PortfolioImage {
 // it's encrypted at rest (see lib/crypto.ts) rather than stored as plain
 // text like the rest of this schema.
 model GoogleCalendarConnection {
-  id        String @id @default(cuid())
-  artist    Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
-  artistId  String @unique
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String @unique
 
   // The artist's real calendar ID (their email, for the primary calendar) —
   // resolved from Google at connect time, not the literal string "primary",
@@ -123,22 +131,22 @@ model GoogleCalendarConnection {
 }
 
 model PricingConfig {
-  id               String @id @default(cuid())
-  artist           Artist @relation(fields: [artistId], references: [id])
-  artistId         String @unique
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String @unique
 
-  hourlyRate       Float  // e.g. 250.00
-  minimumPrice     Float  // e.g. 150.00
-  rangeSpreadPct   Float  @default(0.15) // +/- 15% shown as a range to client
+  hourlyRate     Float // e.g. 250.00
+  minimumPrice   Float // e.g. 150.00
+  rangeSpreadPct Float @default(0.15) // +/- 15% shown as a range to client
 
-  depositType      DepositType @default(FLAT)
-  depositFlat      Float?      // e.g. 150.00
-  depositPercent   Float?      // e.g. 0.20
+  depositType         DepositType @default(FLAT)
+  depositFlat         Float? // e.g. 150.00
+  depositPercent      Float? // e.g. 0.20
   // How the client actually pays the deposit — a Venmo/CashApp/PayPal
   // handle or link, since payment isn't processed by this app (see the
   // Appointment.depositPaid comment for why).
   depositInstructions String?
-  cancellationPolicy String?
+  cancellationPolicy  String?
 
   // Whether each style's multiplier (TattooStyle.multiplier) scales the
   // estimated session time (and so the booked slot length) or scales the
@@ -146,7 +154,7 @@ model PricingConfig {
   // picks this once for their whole account, not per style.
   styleMultiplierMode StyleMultiplierMode @default(TIME)
 
-  updatedAt        DateTime @updatedAt
+  updatedAt DateTime @updatedAt
 }
 
 enum DepositType {
@@ -167,25 +175,25 @@ enum StyleMultiplierMode {
 // PricingConfig.styleMultiplierMode for whether `multiplier` below scales
 // time or price.
 model TattooStyle {
-  id             String @id @default(cuid())
-  artist         Artist @relation(fields: [artistId], references: [id])
-  artistId       String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String
 
-  name           String        // e.g. "Fine Line"
-  multiplier     Float         // e.g. 0.9
-  active         Boolean @default(true)
+  name       String // e.g. "Fine Line"
+  multiplier Float // e.g. 0.9
+  active     Boolean @default(true)
 
   @@unique([artistId, name])
 }
 
 // Things an artist explicitly won't do (PRD section 26)
 model ArtistRestriction {
-  id        String @id @default(cuid())
-  artist    Artist @relation(fields: [artistId], references: [id])
-  artistId  String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String
 
-  type      RestrictionType
-  value     String   // e.g. "hands", "portraits", "coverups"
+  type  RestrictionType
+  value String // e.g. "hands", "portraits", "coverups"
 }
 
 enum RestrictionType {
@@ -197,32 +205,39 @@ enum RestrictionType {
 
 // Automatic booking thresholds (PRD section 15)
 model BookingRules {
-  id                      String @id @default(cuid())
-  artist                  Artist @relation(fields: [artistId], references: [id])
-  artistId                String @unique
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String @unique
 
-  maxAutoBookDurationMins Int     @default(180) // above this -> review/consult
-  maxAutoBookComplexity   Int     @default(6)    // 1-10 scale
-  minAiConfidence         Float   @default(0.75) // 0-1
-  referenceFreedomMaxForAutoBook Int @default(40) // slider 0-100; above this -> more artist freedom needed -> review/consult
-  requireConsultAboveDurationMins Int @default(240) // hard cutoff -> RED
-  consultationDurationMins Int @default(30) // length of a booked consultation slot
+  maxAutoBookDurationMins         Int   @default(180) // above this -> review/consult
+  maxAutoBookComplexity           Int   @default(6) // 1-10 scale
+  minAiConfidence                 Float @default(0.75) // 0-1
+  referenceFreedomMaxForAutoBook  Int   @default(40) // slider 0-100; above this -> more artist freedom needed -> review/consult
+  requireConsultAboveDurationMins Int   @default(240) // hard cutoff -> RED
+  consultationDurationMins        Int   @default(30) // length of a booked consultation slot
 
-  updatedAt               DateTime @updatedAt
+  // Client reminders: how many days before an appointment to email the
+  // client (one email per entry, e.g. [2, 1]). Empty = no reminders. Sent by
+  // the daily cron in app/api/cron/reminders, see lib/reminders.ts.
+  reminderDaysBefore Int[]   @default([2, 1])
+  // Email the client a link to review their tattoo after the appointment.
+  sendReviewRequests Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
 }
 
 // Weekly recurring or one-off availability, split by type (PRD section 17-18)
 model AvailabilityBlock {
-  id         String   @id @default(cuid())
-  artist     Artist   @relation(fields: [artistId], references: [id])
-  artistId   String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String
 
-  type       AvailabilityType
-  dayOfWeek  Int?      // 0=Sun..6=Sat, for recurring
-  startTime  String    // "10:00" 24h local
-  endTime    String    // "18:00"
-  date       DateTime? // for one-off overrides / blocked days
-  isBlocked  Boolean   @default(false) // true = explicitly unavailable (vacation etc)
+  type      AvailabilityType
+  dayOfWeek Int? // 0=Sun..6=Sat, for recurring
+  startTime String // "10:00" 24h local
+  endTime   String // "18:00"
+  date      DateTime? // for one-off overrides / blocked days
+  isBlocked Boolean          @default(false) // true = explicitly unavailable (vacation etc)
 }
 
 enum AvailabilityType {
@@ -235,16 +250,127 @@ enum AvailabilityType {
 // ---------------------------------------------------------------------------
 
 model Client {
-  id          String   @id @default(cuid())
-  email       String
-  phone       String?
-  name        String?
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  email     String
+  phone     String?
+  name      String?
+  createdAt DateTime @default(now())
 
-  submissions Submission[]
+  submissions  Submission[]
   appointments Appointment[]
+  notes        ClientNote[]
+  photos       ClientPhoto[]
+  ratings      ClientRating[]
+  reviews      Review[]
+  messageLogs  MessageLog[]
 
   @@unique([email])
+}
+
+// The artist's private notes on a client — never shown to the client.
+model ClientNote {
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([artistId, clientId])
+}
+
+// Photos the artist adds to a client's record (finished or healed work,
+// stencils). The client's own request photos stay on Submission.
+model ClientPhoto {
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  imageDataUrl String // data:image/...;base64,... same pattern as PortfolioImage
+  caption      String?
+  createdAt    DateTime @default(now())
+
+  @@index([artistId, clientId])
+}
+
+// The artist's private rating of a client (on time, easy to work with) —
+// one per artist and client, only the artist ever sees it.
+model ClientRating {
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  rating    Int // 1-5
+  comment   String?
+  updatedAt DateTime @updatedAt
+
+  @@unique([artistId, clientId])
+}
+
+// A client's review of their appointment, left through the link in the
+// review-request email. The artist chooses which ones show on their page.
+model Review {
+  id            String      @id @default(cuid())
+  artist        Artist      @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId      String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointmentId String      @unique
+
+  rating     Int // 1-5
+  comment    String?
+  showOnPage Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([artistId])
+}
+
+// Every message sent (or attempted) to a client, so the artist can see
+// what went out and when.
+model MessageLog {
+  id            String       @id @default(cuid())
+  artist        Artist       @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  artistId      String
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId      String
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  appointmentId String?
+
+  channel   MessageChannel @default(EMAIL)
+  kind      MessageKind
+  to        String
+  subject   String
+  status    MessageStatus
+  error     String?
+  createdAt DateTime       @default(now())
+
+  @@index([artistId, clientId])
+}
+
+enum MessageChannel {
+  EMAIL
+  SMS
+}
+
+enum MessageKind {
+  REQUEST_RECEIVED
+  ESTIMATE_APPROVED
+  BOOKING_CONFIRMATION
+  REMINDER
+  REVIEW_REQUEST
+}
+
+enum MessageStatus {
+  SENT
+  FAILED
+  SKIPPED // no email provider configured
 }
 
 // ---------------------------------------------------------------------------
@@ -252,30 +378,30 @@ model Client {
 // ---------------------------------------------------------------------------
 
 model Submission {
-  id                String   @id @default(cuid())
-  artist            Artist   @relation(fields: [artistId], references: [id])
-  artistId          String
-  client            Client   @relation(fields: [clientId], references: [id])
-  clientId          String
+  id       String @id @default(cuid())
+  artist   Artist @relation(fields: [artistId], references: [id])
+  artistId String
+  client   Client @relation(fields: [clientId], references: [id])
+  clientId String
 
-  createdAt         DateTime @default(now())
+  createdAt DateTime @default(now())
 
   // Client inputs
   inspirationImages String[] // URLs
   placementPhoto    String?
   description       String?
-  placement         String   // e.g. "forearm"
+  placement         String // e.g. "forearm"
   sizeInches        Float?
-  sizePreset        String?  // "coin" | "palm" | "phone" | "hand" | "larger"
-  referenceFreedom  Int      // 0 (follow reference) - 100 (artist's interpretation)
+  sizePreset        String? // "coin" | "palm" | "phone" | "hand" | "larger"
+  referenceFreedom  Int // 0 (follow reference) - 100 (artist's interpretation)
 
   // AI analysis output
-  aiDetectedStyle    String?
-  aiComplexity       Int?     // 1-10
-  aiEstimatedHours   Float?
-  aiConfidence       Float?   // 0-1
-  aiColorVsBW        String?  // "color" | "black_grey"
-  aiRawAnalysis      Json?
+  aiDetectedStyle  String?
+  aiComplexity     Int? // 1-10
+  aiEstimatedHours Float?
+  aiConfidence     Float? // 0-1
+  aiColorVsBW      String? // "color" | "black_grey"
+  aiRawAnalysis    Json?
 
   // Pricing engine output
   estimatedPriceLow  Float?
@@ -283,7 +409,7 @@ model Submission {
   estimatedHours     Float?
 
   // Routing decision
-  status             SubmissionStatus @default(PENDING_ANALYSIS)
+  status SubmissionStatus @default(PENDING_ANALYSIS)
 
   // Artist override
   artistOverridePriceLow  Float?
@@ -293,18 +419,18 @@ model Submission {
 
   // Set when this came from a flash booking rather than the custom request
   // form, so it shows up with everything else in the artist's dashboard.
-  flashDesign        FlashDesign? @relation(fields: [flashDesignId], references: [id], onDelete: SetNull)
-  flashDesignId      String?
+  flashDesign   FlashDesign? @relation(fields: [flashDesignId], references: [id], onDelete: SetNull)
+  flashDesignId String?
 
-  appointment        Appointment?
+  appointment Appointment?
 }
 
 enum SubmissionStatus {
-  PENDING_ANALYSIS   // AI hasn't run yet
+  PENDING_ANALYSIS // AI hasn't run yet
   GREEN_AUTO_BOOKABLE
   YELLOW_ARTIST_REVIEW
   RED_CONSULTATION_REQUIRED
-  APPROVED            // artist approved after review
+  APPROVED // artist approved after review
   DECLINED
   BOOKED
 }
@@ -314,33 +440,53 @@ enum SubmissionStatus {
 // ---------------------------------------------------------------------------
 
 model Appointment {
-  id            String   @id @default(cuid())
-  artist        Artist   @relation(fields: [artistId], references: [id])
-  artistId      String
-  client        Client   @relation(fields: [clientId], references: [id])
-  clientId      String
-  submission    Submission? @relation(fields: [submissionId], references: [id])
-  submissionId  String?     @unique
+  id           String      @id @default(cuid())
+  artist       Artist      @relation(fields: [artistId], references: [id])
+  artistId     String
+  client       Client      @relation(fields: [clientId], references: [id])
+  clientId     String
+  submission   Submission? @relation(fields: [submissionId], references: [id])
+  submissionId String?     @unique
 
-  type          AppointmentType
-  startTime     DateTime
-  endTime       DateTime
+  type      AppointmentType
+  startTime DateTime
+  endTime   DateTime
 
   // Deposits aren't processed by this app — the client pays the artist
   // directly (Venmo/CashApp/etc, see PricingConfig.depositInstructions) and
   // the artist marks it received. depositPaid starts false on every new
   // tattoo appointment.
-  depositPaid   Boolean  @default(false)
+  depositPaid   Boolean @default(false)
   depositAmount Float?
 
-  status        AppointmentStatus @default(SCHEDULED)
-  createdAt     DateTime @default(now())
+  status    AppointmentStatus @default(SCHEDULED)
+  createdAt DateTime          @default(now())
 
   // The event this appointment was pushed to on the artist's real Google
   // Calendar, if they're connected — null if never pushed (not connected,
   // or the push failed; booking itself never blocks on this). Needed to
   // delete the matching event again on cancellation.
   googleEventId String?
+
+  // Secret token in the client's confirm / review link (/c/[token]) — the
+  // client has no login, so this link is their only access. Null on
+  // appointments booked before this existed; filled in when first needed.
+  clientToken        String?            @unique
+  confirmationStatus ConfirmationStatus @default(PENDING)
+  confirmationNote   String? // the client's message when asking to reschedule
+  confirmedAt        DateTime?
+  // Which BookingRules.reminderDaysBefore entries were already sent.
+  remindersSentDays  Int[]              @default([])
+  reviewRequestedAt  DateTime?
+
+  review      Review?
+  messageLogs MessageLog[]
+}
+
+enum ConfirmationStatus {
+  PENDING
+  CONFIRMED
+  RESCHEDULE_REQUESTED
 }
 
 enum AppointmentType {

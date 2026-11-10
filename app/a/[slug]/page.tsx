@@ -36,6 +36,12 @@ export default async function ArtistIntakePage({
         where: { active: true },
         select: { oneOff: true, claimedAt: true, active: true },
       },
+      reviews: {
+        where: { showOnPage: true },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: { id: true, rating: true, comment: true, client: { select: { name: true } } },
+      },
     },
   });
 
@@ -53,6 +59,13 @@ export default async function ArtistIntakePage({
       artistBio={artist.bio}
       portfolioImages={artist.portfolioImages.map((i) => `/api/public/portfolio/${i.id}/image`)}
       hasFlash={artist.flashDesigns.some(isFlashBookable)}
+      reviews={artist.reviews.map((r) => ({
+        id: r.id,
+        rating: r.rating,
+        comment: r.comment,
+        // First name only — a public page shouldn't carry a client's full name.
+        name: r.client.name?.trim().split(/\s+/)[0] || null,
+      }))}
     />
   );
 }

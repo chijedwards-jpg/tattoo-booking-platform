@@ -6,6 +6,7 @@ import { calculateDeposit } from "@/lib/pricingEngine";
 import { fetchGoogleBusyIntervals, createGoogleCalendarEvent } from "@/lib/googleOAuth";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { DEFAULT_TIME_ZONE } from "@/lib/timeZones";
+import { newClientToken, clientLink } from "@/lib/reminders";
 
 const BookingSchema = z.object({
   submissionId: z.string(),
@@ -108,6 +109,7 @@ export async function POST(req: NextRequest) {
       startTime,
       endTime,
       depositAmount,
+      clientToken: newClientToken(),
     },
   });
 
@@ -144,6 +146,13 @@ export async function POST(req: NextRequest) {
       timeZone: submission.artist.timeZone ?? DEFAULT_TIME_ZONE,
       depositAmount,
       depositInstructions: submission.artist.pricingConfig.depositInstructions,
+      confirmUrl: clientLink(appointment.clientToken!),
+      log: {
+        artistId: submission.artistId,
+        clientId: submission.clientId,
+        appointmentId: appointment.id,
+        kind: "BOOKING_CONFIRMATION",
+      },
     });
   } catch (err) {
     console.error("Failed to send booking confirmation email:", err);

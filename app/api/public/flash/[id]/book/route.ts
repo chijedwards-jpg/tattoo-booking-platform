@@ -7,6 +7,7 @@ import { calculateDeposit } from "@/lib/pricingEngine";
 import { createGoogleCalendarEvent } from "@/lib/googleOAuth";
 import { sendBookingConfirmationEmail } from "@/lib/email";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
+import { newClientToken, clientLink } from "@/lib/reminders";
 
 const BookingSchema = z.object({
   clientEmail: z.string().email(),
@@ -114,6 +115,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           startTime: slot.start,
           endTime: slot.end,
           depositAmount,
+          clientToken: newClientToken(),
         },
       });
 
@@ -151,6 +153,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       timeZone,
       depositAmount,
       depositInstructions: pricingConfig.depositInstructions,
+      confirmUrl: clientLink(appointment.clientToken!),
+      log: {
+        artistId: artist.id,
+        clientId: appointment.clientId,
+        appointmentId: appointment.id,
+        kind: "BOOKING_CONFIRMATION",
+      },
     });
   } catch (err) {
     console.error("Failed to send flash booking confirmation email:", err);

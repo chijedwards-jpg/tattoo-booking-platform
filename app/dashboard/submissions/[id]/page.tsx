@@ -37,7 +37,13 @@ export default async function SubmissionDetailPage({
         <ChevronLeft size={15} /> All submissions
       </Link>
 
-      <h1 className="mt-4 font-display text-3xl text-ink">{submission.client.email}</h1>
+      <h1 className="mt-4 font-display text-3xl text-ink">{submission.client.name || submission.client.email}</h1>
+      <Link
+        href={`/dashboard/clients/${submission.clientId}`}
+        className="mt-1 inline-block text-sm text-ink-red hover:underline"
+      >
+        View client profile, notes &amp; history →
+      </Link>
       <p className="mt-1 text-sm text-grey">
         Submitted {new Date(submission.createdAt).toLocaleString()}
       </p>
@@ -94,6 +100,8 @@ export default async function SubmissionDetailPage({
           endTime={submission.appointment.endTime.toISOString()}
           depositPaid={submission.appointment.depositPaid}
           depositAmount={submission.appointment.depositAmount}
+          confirmationStatus={submission.appointment.confirmationStatus}
+          confirmationNote={submission.appointment.confirmationNote}
         />
       ) : (
         <ReviewActions
